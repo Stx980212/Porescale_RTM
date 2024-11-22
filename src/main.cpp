@@ -5,6 +5,7 @@
 #include "transport2d.cuh"
 #include "reactions2d.cuh"
 #include "io_utils.hpp"
+#include "cuda_utils.cuh"
 
 class ReactiveTransportSolver {
 public:
@@ -150,14 +151,15 @@ public:
             }
             
             // Handle non-convergence
+            const float MIN_DT = 1e-10f;  // Add this as a class member
             if (!step_converged) {
-                std::cout << "Warning: Step failed to converge at time " 
-                         << current_time << std::endl;
-                         
-                // Restore previous state and reduce timestep
+                if (dt_ <= MIN_DT) {
+                    std::cout << "Error: Failed to converge even at minimum timestep" << std::endl;
+                    break;  // Exit the simulation
+                }
                 concentrations_ = pre_step_concentrations;
                 dt_ *= 0.5f;
-                std::cout << "Reducing timestep to " << dt_ << std::endl;
+                dt_ = std::max(dt_, MIN_DT);
                 continue;
             }
             
@@ -252,7 +254,7 @@ private:
         }
         
         // Check if solution is bounded
-        if (checkSolutionBounds()) {
+        if (!checkSolutionBounds()) {
             conv_status_.divergence_reason = "Solution out of bounds";
             return false;
         }
@@ -271,10 +273,10 @@ private:
     bool checkSolutionBounds() const {
         for (float c : concentrations_) {
             if (std::isnan(c) || std::isinf(c) || c < -conv_params_.absolute_tol) {
-                return false;
+                return false;  // Return false if solution is out of bounds
             }
         }
-        return true;
+        return true;  // Return true if solution is within bounds
     }
     
     void printConvergenceInfo() const {
@@ -336,7 +338,7 @@ int main() {
         conv_params.relative_tol = 1e-6f;
         conv_params.absolute_tol = 1e-8f;
         conv_params.max_iterations = 50;
-        conv_params.mass_tol = 1e-10f;
+        conv_params.mass_tol = 1e-8f;
         solver.setConvergenceParams(conv_params);
         
         // Set physical parameters
