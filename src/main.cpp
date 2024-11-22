@@ -88,34 +88,37 @@ public:
     }
 
     void initialize() {
-        // Initialize with Gaussian pulses for species A and B
-        const float cx = nx_ / 2.0f;
-        const float cy = ny_ / 2.0f;
-        const float radius = nx_ / 10.0f;
-        
-        for (int j = 0; j < ny_; j++) {
-            for (int i = 0; i < nx_; i++) {
-                // Distance from center
-                float dx = (i - cx);
-                float dy = (j - cy);
-                float r2 = (dx*dx + dy*dy)/(radius*radius);
-                
-                // Species A: Central Gaussian
-                concentrations_[(j * nx_ + i) * num_species_ + 0] = 
-                    std::exp(-r2);
-                
-                // Species B: Offset Gaussian
-                concentrations_[(j * nx_ + i) * num_species_ + 1] = 
-                    0.5f * std::exp(-(dx*dx + (dy-radius)*(dy-radius))/(radius*radius));
-                
-                // Species C: Initially zero
-                concentrations_[(j * nx_ + i) * num_species_ + 2] = 0.0f;
-            }
+    // Initialize with Gaussian pulses for species A and B
+    const float cx = nx_ / 2.0f;
+    const float cy = ny_ / 2.0f;
+    const float radius = nx_ / 10.0f;
+    
+    for (int j = 0; j < ny_; j++) {
+        for (int i = 0; i < nx_; i++) {
+            // Distance from center
+            float dx = (i - cx);
+            float dy = (j - cy);
+            float r2 = (dx*dx + dy*dy)/(radius*radius);
+            
+            // Species A: Central Gaussian
+            concentrations_[(j * nx_ + i) * num_species_ + 0] = 
+                std::exp(-r2);
+            
+            // Species B: Offset Gaussian
+            concentrations_[(j * nx_ + i) * num_species_ + 1] = 
+                0.5f * std::exp(-(dx*dx + (dy-radius)*(dy-radius))/(radius*radius));
+            
+            // Species C: Initially zero
+            concentrations_[(j * nx_ + i) * num_species_ + 2] = 0.0f;
         }
-        
-        // Save initial state
-        writer_->writeTimestep(concentrations_, 0.0f);
     }
+    
+    // Save initial state
+    writer_->writeTimestep(concentrations_, 0.0f);
+    
+    // Create XDMF file after first timestep is written
+    writer_->createXDMF("reactive_transport.xmf");
+}
     
     void solve() {
         float current_time = 0.0f;
@@ -330,7 +333,7 @@ int main() {
     const int ny = 200;
     const float dx = 0.01f;
     const float dy = 0.01f;
-    const float dt = 0.00001f;
+    const float dt = 0.00005f;
     const float total_time = 1.0f;
     const int num_species = 3;
     

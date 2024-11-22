@@ -16,9 +16,11 @@ __device__ void computeReactionRates(
     switch(reaction_type) {
         case ReactionType::A_PLUS_B_TO_C:
             // Simple second-order reaction: A + B -> C
-            rates[0] = -params.k_forward * cA * cB;                    // Rate for A
-            rates[1] = -params.k_forward * cA * cB;                    // Rate for B
-            rates[2] = params.k_forward * cA * cB;                     // Rate for C
+            float forward_rate = params.k_forward * cA * cB;
+            float backward_rate = 0.0f;
+            rates[0] = -forward_rate + backward_rate;                  // Rate for A
+            rates[1] = -forward_rate + backward_rate;                  // Rate for B
+            rates[2] = forward_rate - backward_rate;                   // Rate for C
             break;
             
         case ReactionType::NONLINEAR:
