@@ -1,1 +1,1 @@
--I/home/shaina/Documents/Tianxiao/Porescale_RTM/include -I/usr/include/hdf5/serial
+-I/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/include -I"/usr/local/cuda-12.6/include" -I/usr/include/hdf5/serial

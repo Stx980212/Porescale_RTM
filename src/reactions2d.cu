@@ -1,5 +1,7 @@
 #include "reactions2d.cuh"
-#include <stdio.h>
+#include "fvm_utils.cuh"
+#include "cuda_utils.cuh"  // Include the new header
+#include <iostream>
 
 __device__ void computeReactionRates(
     float* rates,

@@ -1,5 +1,5 @@
 CMakeFiles/reactive_transport.dir/src/main.cpp.o: \
- /home/shaina/Documents/Tianxiao/Porescale_RTM/src/main.cpp \
+ /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/main.cpp \
  /usr/include/stdc-predef.h /usr/include/c++/11/iostream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -179,11 +179,14 @@ CMakeFiles/reactive_transport.dir/src/main.cpp.o: \
  /usr/include/c++/11/bits/atomic_base.h \
  /usr/include/c++/11/bits/atomic_lockfree_defines.h \
  /usr/include/c++/11/backward/auto_ptr.h \
- /home/shaina/Documents/Tianxiao/Porescale_RTM/include/transport2d.cuh \
- /usr/include/cuda_runtime.h /usr/include/crt/host_config.h \
- /usr/include/builtin_types.h /usr/include/device_types.h \
- /usr/include/crt/host_defines.h /usr/include/driver_types.h \
- /usr/include/vector_types.h \
+ /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/include/transport2d.cuh \
+ /usr/local/cuda-12.6/include/cuda_runtime.h \
+ /usr/local/cuda-12.6/include/crt/host_config.h \
+ /usr/local/cuda-12.6/include/builtin_types.h \
+ /usr/local/cuda-12.6/include/device_types.h \
+ /usr/local/cuda-12.6/include/crt/host_defines.h \
+ /usr/local/cuda-12.6/include/driver_types.h \
+ /usr/local/cuda-12.6/include/vector_types.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h \
  /usr/include/limits.h /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
@@ -192,13 +195,17 @@ CMakeFiles/reactive_transport.dir/src/main.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
  /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
  /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
- /usr/include/surface_types.h /usr/include/texture_types.h \
- /usr/include/library_types.h /usr/include/channel_descriptor.h \
- /usr/include/cuda_runtime_api.h /usr/include/cuda_device_runtime_api.h \
- /usr/include/driver_functions.h /usr/include/vector_functions.h \
- /usr/include/vector_functions.hpp \
- /home/shaina/Documents/Tianxiao/Porescale_RTM/include/reactions2d.cuh \
- /home/shaina/Documents/Tianxiao/Porescale_RTM/include/io_utils.hpp \
+ /usr/local/cuda-12.6/include/surface_types.h \
+ /usr/local/cuda-12.6/include/texture_types.h \
+ /usr/local/cuda-12.6/include/library_types.h \
+ /usr/local/cuda-12.6/include/channel_descriptor.h \
+ /usr/local/cuda-12.6/include/cuda_runtime_api.h \
+ /usr/local/cuda-12.6/include/cuda_device_runtime_api.h \
+ /usr/local/cuda-12.6/include/driver_functions.h \
+ /usr/local/cuda-12.6/include/vector_functions.h \
+ /usr/local/cuda-12.6/include/vector_functions.hpp \
+ /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/include/reactions2d.cuh \
+ /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/include/io_utils.hpp \
  /usr/include/hdf5/serial/H5Cpp.h /usr/include/hdf5/serial/H5Include.h \
  /usr/include/hdf5/serial/hdf5.h /usr/include/hdf5/serial/H5public.h \
  /usr/include/hdf5/serial/H5pubconf.h \
@@ -260,4 +267,5 @@ CMakeFiles/reactive_transport.dir/src/main.cpp.o: \
  /usr/include/hdf5/serial/H5VarLenType.h \
  /usr/include/hdf5/serial/H5DataSet.h \
  /usr/include/hdf5/serial/H5CommonFG.h /usr/include/hdf5/serial/H5Group.h \
- /usr/include/hdf5/serial/H5File.h /usr/include/hdf5/serial/H5Library.h
+ /usr/include/hdf5/serial/H5File.h /usr/include/hdf5/serial/H5Library.h \
+ /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/include/cuda_utils.cuh

@@ -1,4 +1,4 @@
-# Install script for directory: /home/shaina/Documents/Tianxiao/Porescale_RTM
+# Install script for directory: /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -49,7 +49,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/reactive_transport"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/home/shaina/Documents/Tianxiao/Porescale_RTM/build/reactive_transport")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/reactive_transport")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/reactive_transport" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/reactive_transport")
     file(RPATH_CHANGE
@@ -70,5 +70,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/shaina/Documents/Tianxiao/Porescale_RTM/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

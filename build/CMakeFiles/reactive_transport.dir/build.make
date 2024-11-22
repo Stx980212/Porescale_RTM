@@ -53,10 +53,10 @@ RM = /home/shaina/anaconda3/lib/python3.9/site-packages/cmake/data/bin/cmake -E 
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/shaina/Documents/Tianxiao/Porescale_RTM
+CMAKE_SOURCE_DIR = /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/shaina/Documents/Tianxiao/Porescale_RTM/build
+CMAKE_BINARY_DIR = /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/reactive_transport.dir/depend.make
@@ -70,25 +70,25 @@ include CMakeFiles/reactive_transport.dir/progress.make
 include CMakeFiles/reactive_transport.dir/flags.make
 
 CMakeFiles/reactive_transport.dir/src/main.cpp.o: CMakeFiles/reactive_transport.dir/flags.make
-CMakeFiles/reactive_transport.dir/src/main.cpp.o: /home/shaina/Documents/Tianxiao/Porescale_RTM/src/main.cpp
+CMakeFiles/reactive_transport.dir/src/main.cpp.o: /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/main.cpp
 CMakeFiles/reactive_transport.dir/src/main.cpp.o: CMakeFiles/reactive_transport.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/reactive_transport.dir/src/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/main.cpp.o -MF CMakeFiles/reactive_transport.dir/src/main.cpp.o.d -o CMakeFiles/reactive_transport.dir/src/main.cpp.o -c /home/shaina/Documents/Tianxiao/Porescale_RTM/src/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/reactive_transport.dir/src/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/main.cpp.o -MF CMakeFiles/reactive_transport.dir/src/main.cpp.o.d -o CMakeFiles/reactive_transport.dir/src/main.cpp.o -c /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/main.cpp
 
 CMakeFiles/reactive_transport.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/reactive_transport.dir/src/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/shaina/Documents/Tianxiao/Porescale_RTM/src/main.cpp > CMakeFiles/reactive_transport.dir/src/main.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/main.cpp > CMakeFiles/reactive_transport.dir/src/main.cpp.i
 
 CMakeFiles/reactive_transport.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/reactive_transport.dir/src/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/shaina/Documents/Tianxiao/Porescale_RTM/src/main.cpp -o CMakeFiles/reactive_transport.dir/src/main.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/main.cpp -o CMakeFiles/reactive_transport.dir/src/main.cpp.s
 
 CMakeFiles/reactive_transport.dir/src/transport2d.cu.o: CMakeFiles/reactive_transport.dir/flags.make
 CMakeFiles/reactive_transport.dir/src/transport2d.cu.o: CMakeFiles/reactive_transport.dir/includes_CUDA.rsp
-CMakeFiles/reactive_transport.dir/src/transport2d.cu.o: /home/shaina/Documents/Tianxiao/Porescale_RTM/src/transport2d.cu
+CMakeFiles/reactive_transport.dir/src/transport2d.cu.o: /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/transport2d.cu
 CMakeFiles/reactive_transport.dir/src/transport2d.cu.o: CMakeFiles/reactive_transport.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/reactive_transport.dir/src/transport2d.cu.o"
-	/usr/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/transport2d.cu.o -MF CMakeFiles/reactive_transport.dir/src/transport2d.cu.o.d -x cu -rdc=true -c /home/shaina/Documents/Tianxiao/Porescale_RTM/src/transport2d.cu -o CMakeFiles/reactive_transport.dir/src/transport2d.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/reactive_transport.dir/src/transport2d.cu.o"
+	/usr/local/cuda-12.6/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/transport2d.cu.o -MF CMakeFiles/reactive_transport.dir/src/transport2d.cu.o.d -x cu -rdc=true -c /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/transport2d.cu -o CMakeFiles/reactive_transport.dir/src/transport2d.cu.o
 
 CMakeFiles/reactive_transport.dir/src/transport2d.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/reactive_transport.dir/src/transport2d.cu.i"
@@ -100,10 +100,10 @@ CMakeFiles/reactive_transport.dir/src/transport2d.cu.s: cmake_force
 
 CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o: CMakeFiles/reactive_transport.dir/flags.make
 CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o: CMakeFiles/reactive_transport.dir/includes_CUDA.rsp
-CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o: /home/shaina/Documents/Tianxiao/Porescale_RTM/src/reactions2d.cu
+CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o: /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/reactions2d.cu
 CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o: CMakeFiles/reactive_transport.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o"
-	/usr/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o -MF CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o.d -x cu -rdc=true -c /home/shaina/Documents/Tianxiao/Porescale_RTM/src/reactions2d.cu -o CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o"
+	/usr/local/cuda-12.6/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o -MF CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o.d -x cu -rdc=true -c /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/reactions2d.cu -o CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o
 
 CMakeFiles/reactive_transport.dir/src/reactions2d.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/reactive_transport.dir/src/reactions2d.cu.i"
@@ -114,18 +114,18 @@ CMakeFiles/reactive_transport.dir/src/reactions2d.cu.s: cmake_force
 	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
 
 CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o: CMakeFiles/reactive_transport.dir/flags.make
-CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o: /home/shaina/Documents/Tianxiao/Porescale_RTM/src/io_utils.cpp
+CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o: /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/io_utils.cpp
 CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o: CMakeFiles/reactive_transport.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o -MF CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o.d -o CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o -c /home/shaina/Documents/Tianxiao/Porescale_RTM/src/io_utils.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o -MF CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o.d -o CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o -c /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/io_utils.cpp
 
 CMakeFiles/reactive_transport.dir/src/io_utils.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/reactive_transport.dir/src/io_utils.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/shaina/Documents/Tianxiao/Porescale_RTM/src/io_utils.cpp > CMakeFiles/reactive_transport.dir/src/io_utils.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/io_utils.cpp > CMakeFiles/reactive_transport.dir/src/io_utils.cpp.i
 
 CMakeFiles/reactive_transport.dir/src/io_utils.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/reactive_transport.dir/src/io_utils.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/shaina/Documents/Tianxiao/Porescale_RTM/src/io_utils.cpp -o CMakeFiles/reactive_transport.dir/src/io_utils.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/src/io_utils.cpp -o CMakeFiles/reactive_transport.dir/src/io_utils.cpp.s
 
 # Object files for target reactive_transport
 reactive_transport_OBJECTS = \
@@ -142,7 +142,7 @@ CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_trans
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/build.make
-CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu/libcudart_static.a
+CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/local/cuda-12.6/lib64/libcudart_static.a
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu/librt.a
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_cpp.so
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5.so
@@ -151,7 +151,7 @@ CMakeFiles/reactive_transport.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/deviceLinkLibs.rsp
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/deviceObjects1
 CMakeFiles/reactive_transport.dir/cmake_device_link.o: CMakeFiles/reactive_transport.dir/dlink.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA device code CMakeFiles/reactive_transport.dir/cmake_device_link.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA device code CMakeFiles/reactive_transport.dir/cmake_device_link.o"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/reactive_transport.dir/dlink.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -173,7 +173,7 @@ reactive_transport: CMakeFiles/reactive_transport.dir/src/transport2d.cu.o
 reactive_transport: CMakeFiles/reactive_transport.dir/src/reactions2d.cu.o
 reactive_transport: CMakeFiles/reactive_transport.dir/src/io_utils.cpp.o
 reactive_transport: CMakeFiles/reactive_transport.dir/build.make
-reactive_transport: /usr/lib/x86_64-linux-gnu/libcudart_static.a
+reactive_transport: /usr/local/cuda-12.6/lib64/libcudart_static.a
 reactive_transport: /usr/lib/x86_64-linux-gnu/librt.a
 reactive_transport: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_cpp.so
 reactive_transport: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5.so
@@ -181,7 +181,7 @@ reactive_transport: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_cpp.so
 reactive_transport: /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5.so
 reactive_transport: CMakeFiles/reactive_transport.dir/cmake_device_link.o
 reactive_transport: CMakeFiles/reactive_transport.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX executable reactive_transport"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX executable reactive_transport"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/reactive_transport.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -193,6 +193,6 @@ CMakeFiles/reactive_transport.dir/clean:
 .PHONY : CMakeFiles/reactive_transport.dir/clean
 
 CMakeFiles/reactive_transport.dir/depend:
-	cd /home/shaina/Documents/Tianxiao/Porescale_RTM/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/shaina/Documents/Tianxiao/Porescale_RTM /home/shaina/Documents/Tianxiao/Porescale_RTM /home/shaina/Documents/Tianxiao/Porescale_RTM/build /home/shaina/Documents/Tianxiao/Porescale_RTM/build /home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/reactive_transport.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build /home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/reactive_transport.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/reactive_transport.dir/depend
 

@@ -1,7 +1,7 @@
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/reactive_transport.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/edit_cache.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/rebuild_cache.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/list_install_components.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/install.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/install/local.dir
-/home/shaina/Documents/Tianxiao/Porescale_RTM/build/CMakeFiles/install/strip.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/reactive_transport.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/edit_cache.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/rebuild_cache.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/list_install_components.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/install.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/install/local.dir
+/home/shaina/Documents/Tianxiao/Projects/Porescale_RTM/build/CMakeFiles/install/strip.dir

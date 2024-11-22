@@ -1,5 +1,6 @@
 #include "transport2d.cuh"
 #include "fvm_utils.cuh"
+#include "cuda_utils.cuh"  // Include the new header
 #include <iostream>
 
 // Calculate fluxes at cell interfaces
@@ -36,8 +37,11 @@ __global__ void calculateFluxesKernel(
             }
             
             // MUSCL reconstruction
-            float cL_interface, cR_interface;
-            FVMUtils::Reconstruction::muscl(cL, cR, dx, cL_interface, cR_interface);
+            //float cL_interface, cR_interface;
+            //FVMUtils::Reconstruction::muscl(cL, cR, dx, cL_interface, cR_interface);
+            
+            float cL_interface = cL;
+            float cR_interface = cR;
             
             // Calculate advective flux using upwind scheme
             float flux_adv = FVMUtils::NumericalFlux::upwind(
@@ -99,6 +103,8 @@ __global__ void updateConcentrationsKernel(
     float dt,
     int num_species
 ) {
+    const float UNDER_RELAX = 0.8f;
+
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     
@@ -119,6 +125,9 @@ __global__ void updateConcentrationsKernel(
             (dt/dx) * (flux_right - flux_left) -
             (dt/dy) * (flux_top - flux_bottom);
             
+        concentrations_new[idx] = UNDER_RELAX * concentrations_new[idx] + 
+                         (1.0f - UNDER_RELAX) * concentrations[idx];
+
         // Ensure positivity
         concentrations_new[idx] = fmaxf(0.0f, concentrations_new[idx]);
     }
@@ -128,28 +137,28 @@ TransportSolver2D::TransportSolver2D(
     int nx, int ny, float dx, float dy, float dt, int num_species)
     : nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), num_species_(num_species) {
     // Allocate device memory
-    cudaMalloc(&d_concentrations_, nx * ny * num_species * sizeof(float));
-    cudaMalloc(&d_concentrations_new_, nx * ny * num_species * sizeof(float));
-    cudaMalloc(&d_fluxes_x_, (nx+1) * ny * num_species * sizeof(float));
-    cudaMalloc(&d_fluxes_y_, nx * (ny+1) * num_species * sizeof(float));
-    
+    checkCudaErrors(cudaMalloc(&d_concentrations_, nx * ny * num_species * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_concentrations_new_, nx * ny * num_species * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_fluxes_x_, (nx+1) * ny * num_species * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_fluxes_y_, nx * (ny+1) * num_species * sizeof(float)));
+     
     // Initialize parameters
     velocity_ = make_float2(0.0f, 0.0f);
     diffusion_ = make_float2(0.001f, 0.001f);
 }
 
 TransportSolver2D::~TransportSolver2D() {
-    cudaFree(d_concentrations_);
-    cudaFree(d_concentrations_new_);
-    cudaFree(d_fluxes_x_);
-    cudaFree(d_fluxes_y_);
+    checkCudaErrors(cudaFree(d_concentrations_));
+    checkCudaErrors(cudaFree(d_concentrations_new_));
+    checkCudaErrors(cudaFree(d_fluxes_x_));
+    checkCudaErrors(cudaFree(d_fluxes_y_));
 }
 
 void TransportSolver2D::solve(std::vector<float>& concentrations) {
     // Copy data to device
-    cudaMemcpy(d_concentrations_, concentrations.data(),
+    checkCudaErrors(cudaMemcpy(d_concentrations_, concentrations.data(),
                nx_ * ny_ * num_species_ * sizeof(float),
-               cudaMemcpyHostToDevice);
+               cudaMemcpyHostToDevice));
     
     // Set up grid and block dimensions
     dim3 block_size(16, 16);
@@ -174,7 +183,9 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
         velocity_,
         diffusion_
     );
-    
+    checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(cudaGetLastError());
+        
     // Step 2: Update cell averages using computed fluxes
     updateConcentrationsKernel<<<num_blocks_update, block_size>>>(
         d_concentrations_new_,
@@ -186,11 +197,13 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
         dt_,
         num_species_
     );
-    
+    checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(cudaGetLastError());
+        
     // Copy results back to host
-    cudaMemcpy(concentrations.data(), d_concentrations_new_,
+    checkCudaErrors(cudaMemcpy(concentrations.data(), d_concentrations_new_,
                nx_ * ny_ * num_species_ * sizeof(float),
-               cudaMemcpyDeviceToHost);
+               cudaMemcpyDeviceToHost));
     
     // Swap pointers for next iteration
     float* temp = d_concentrations_;
