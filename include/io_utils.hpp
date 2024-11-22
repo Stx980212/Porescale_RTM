@@ -12,23 +12,7 @@ public:
     HDF5Writer(const std::string& filename, 
                int nx, int ny, 
                int num_species,
-               float dx, float dy)
-        : filename_(filename)
-        , nx_(nx), ny_(ny)
-        , num_species_(num_species)
-        , dx_(dx), dy_(dy)
-        , timestep_(0) {
-        
-        file_ = H5::H5File(filename_, H5F_ACC_TRUNC);
-        
-        hsize_t dims[4] = {
-            static_cast<hsize_t>(nx_),
-            static_cast<hsize_t>(ny_),
-            static_cast<hsize_t>(1),
-            static_cast<hsize_t>(num_species_)
-        };
-        dataspace_ = H5::DataSpace(4, dims);
-    }
+               float dx, float dy);  // Just declare the constructor
     
     ~HDF5Writer();
     
