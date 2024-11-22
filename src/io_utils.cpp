@@ -16,10 +16,11 @@ IOUtils::HDF5Writer::HDF5Writer(
         file_ = H5::H5File(filename, H5F_ACC_TRUNC);
         
         // For FVM, dimensions are based on number of cells
-        hsize_t dims[3] = {static_cast<hsize_t>(ny_),    // Number of cells in y
-                          static_cast<hsize_t>(nx_),      // Number of cells in x
-                          static_cast<hsize_t>(num_species_)};
-        dataspace_ = H5::DataSpace(3, dims);
+        hsize_t dims[4] = {static_cast<hsize_t>(ny_),     // Number of cells in y
+                   static_cast<hsize_t>(nx_),      // Number of cells in x
+                   static_cast<hsize_t>(1),        // Unit thickness in z
+                   static_cast<hsize_t>(num_species_)};
+        dataspace_ = H5::DataSpace(4, dims);
         
         // Add mesh attributes
         H5::Group mesh_info = file_.createGroup("/mesh");
@@ -58,40 +59,23 @@ IOUtils::HDF5Writer::~HDF5Writer() {
 
 void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations, float time) {
     try {
-        for (int s = 0; s < num_species_; ++s) {
-            // Create dataset name for each species
-            std::stringstream ss;
-            ss << "concentrations_" << std::setw(6) << std::setfill('0') << timestep_ 
-               << "_species_" << s;
-            
-            // Create 3D dataspace for cell-centered data
-            hsize_t dims[3] = {static_cast<hsize_t>(ny_),
-                              static_cast<hsize_t>(nx_),
-                              static_cast<hsize_t>(1)};  // Added third dimension
-            H5::DataSpace dataspace(3, dims);
-            
-            // Create and write dataset
-            H5::DataSet dataset = file_.createDataSet(ss.str(),
-                                                    H5::PredType::NATIVE_FLOAT,
-                                                    dataspace);
-            
-            // Create temporary buffer for 3D data
-            std::vector<float> data_3d(nx_ * ny_);
-            
-            // Extract data for this species
-            for (int i = 0; i < nx_ * ny_; ++i) {
-                data_3d[i] = concentrations[i * num_species_ + s];
-            }
-            
-            dataset.write(data_3d.data(), H5::PredType::NATIVE_FLOAT);
-            
-            // Add time attribute
-            H5::DataSpace attr_space(H5S_SCALAR);
-            H5::Attribute attr = dataset.createAttribute("time",
-                                                       H5::PredType::NATIVE_FLOAT,
-                                                       attr_space);
-            attr.write(H5::PredType::NATIVE_FLOAT, &time);
-        }
+        std::stringstream ss;
+        ss << "concentrations_" << std::setw(6) << std::setfill('0') << timestep_;
+        
+        // Create dataset using the 4D dataspace
+        H5::DataSet dataset = file_.createDataSet(ss.str(),
+                                                H5::PredType::NATIVE_FLOAT,
+                                                dataspace_);
+        
+        // Write all data at once - the memory layout remains the same
+        dataset.write(concentrations.data(), H5::PredType::NATIVE_FLOAT);
+        
+        // Add time attribute
+        H5::DataSpace attr_space(H5S_SCALAR);
+        H5::Attribute attr = dataset.createAttribute("time",
+                                                   H5::PredType::NATIVE_FLOAT,
+                                                   attr_space);
+        attr.write(H5::PredType::NATIVE_FLOAT, &time);
         
         times_.push_back(time);
         timestep_++;
@@ -119,28 +103,14 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
              << "        <Time Value=\"" << times_[i] << "\"/>\n"
              << "        <Topology TopologyType=\"3DRectMesh\" "
              << "Dimensions=\"" << (ny_ + 1) << " " << (nx_ + 1) << " 2\"/>\n"
-             << "        <Geometry GeometryType=\"VXVYVZ\">\n"
-             // X coordinates
-             << "          <DataItem Name=\"X\" Dimensions=\"" << (nx_ + 1) << "\" NumberType=\"Float\" Format=\"XML\">\n            ";
-        
-        // Write X coordinates
-        for (int x = 0; x <= nx_; x++) {
-            xdmf << x * dx_ << " ";
-        }
-        
-        // Y coordinates
-        xdmf << "\n          </DataItem>\n"
-             << "          <DataItem Name=\"Y\" Dimensions=\"" << (ny_ + 1) << "\" NumberType=\"Float\" Format=\"XML\">\n            ";
-        
-        // Write Y coordinates
-        for (int y = 0; y <= ny_; y++) {
-            xdmf << y * dy_ << " ";
-        }
-        
-        // Z coordinates (just 0 and dz for single layer)
-        xdmf << "\n          </DataItem>\n"
-             << "          <DataItem Name=\"Z\" Dimensions=\"2\" NumberType=\"Float\" Format=\"XML\">\n"
-             << "            0.0 1.0\n"
+             << "        <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n"
+             // Origin point
+             << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
+             << "            0.0 0.0 0.0\n"
+             << "          </DataItem>\n"
+             // Grid spacing
+             << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
+             << "            " << dy_ << " " << dx_ << " 1.0\n"
              << "          </DataItem>\n"
              << "        </Geometry>\n";
         
@@ -148,10 +118,18 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
         for (int s = 0; s < num_species_; ++s) {
             xdmf << "        <Attribute Name=\"Species_" << s 
                  << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
-                 << "          <DataItem Dimensions=\"" << ny_ << " " << nx_ << " 1"
-                 << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF5\">\n"
+                 << "          <DataItem ItemType=\"HyperSlab\" Dimensions=\"" 
+                 << ny_ << " " << nx_ << " 1\">\n"
+                 << "            <DataItem Dimensions=\"3 4\" Format=\"XML\">\n"
+                 << "              0 0 0 " << s << "    <!--start indices-->\n"
+                 << "              1 1 1 1        <!--stride-->\n"
+                 << "              " << ny_ << " " << nx_ << " 1 1  <!--count-->\n"
+                 << "            </DataItem>\n"
+                 << "            <DataItem Dimensions=\"" << ny_ << " " << nx_ 
+                 << " 1 " << num_species_ << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
                  << "            " << filename_ << ":/concentrations_"
-                 << std::setw(6) << std::setfill('0') << i << "_species_" << s << "\n"
+                 << std::setw(6) << std::setfill('0') << i << "\n"
+                 << "            </DataItem>\n"
                  << "          </DataItem>\n"
                  << "        </Attribute>\n";
         }
