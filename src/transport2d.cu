@@ -21,36 +21,25 @@ __global__ void calculateFluxesKernel(
     // Calculate x-direction fluxes
     if (i < nx+1 && j < ny) {  // +1 for interfaces
         for (int s = 0; s < num_species; s++) {
-            float cL, cR;  // Left and right states
-            
-            if (i == 0) {  // Left boundary
-                cL = concentrations[(j * nx) * num_species + s];
-                cR = cL;  // Zero gradient
+            // no-flux boundary
+            if (i == 0 || i == nx) {
+                fluxes_x[(j * (nx+1) + i) * num_species + s] = 0.0f;
+                continue;
             }
-            else if (i == nx) {  // Right boundary
-                cR = concentrations[(j * nx + nx-1) * num_species + s];
-                cL = cR;  // Zero gradient
-            }
-            else {  // Interior interfaces
-                cL = concentrations[(j * nx + i-1) * num_species + s];
-                cR = concentrations[(j * nx + i) * num_species + s];
-            }
+
+            float cL = concentrations[(j * nx + i-1) * num_species + s];
+            float cR = concentrations[(j * nx + i) * num_species + s];
             
             // MUSCL reconstruction
             //float cL_interface, cR_interface;
             //FVMUtils::Reconstruction::muscl(cL, cR, dx, cL_interface, cR_interface);
             
-            float cL_interface = cL;
-            float cR_interface = cR;
-            
-            // Calculate advective flux using upwind scheme
-            float flux_adv = FVMUtils::NumericalFlux::upwind(
-                cL_interface, cR_interface, velocity.x);
-            
+             // Calculate advective flux using upwind scheme
+            float flux_adv = FVMUtils::NumericalFlux::upwind(cL, cR, velocity.x);
+
             // Calculate diffusive flux
-            float flux_diff = FVMUtils::NumericalFlux::diffusive(
-                cL, cR, dx, diffusion.x);
-            
+            float flux_diff = FVMUtils::NumericalFlux::diffusive(cL, cR, dx, diffusion.x);
+               
             // Store total flux
             fluxes_x[(j * (nx+1) + i) * num_species + s] = flux_adv + flux_diff;
         }
@@ -59,34 +48,19 @@ __global__ void calculateFluxesKernel(
     // Calculate y-direction fluxes
     if (i < nx && j < ny+1) {
         for (int s = 0; s < num_species; s++) {
-            float cB, cT;  // Bottom and top states
-            
-            if (j == 0) {  // Bottom boundary
-                cB = concentrations[i * num_species + s];
-                cT = cB;  // Zero gradient
-            }
-            else if (j == ny) {  // Top boundary
-                cT = concentrations[((ny-1) * nx + i) * num_species + s];
-                cB = cT;  // Zero gradient
-            }
-            else {  // Interior interfaces
-                cB = concentrations[((j-1) * nx + i) * num_species + s];
-                cT = concentrations[(j * nx + i) * num_species + s];
+            // At domain boundaries, set flux to zero
+            if (j == 0 || j == ny) {
+                fluxes_y[(j * nx + i) * num_species + s] = 0.0f;
+                continue;
             }
             
-            // MUSCL reconstruction
-            float cB_interface, cT_interface;
-            FVMUtils::Reconstruction::muscl(cB, cT, dy, cB_interface, cT_interface);
+            float cB = concentrations[((j-1) * nx + i) * num_species + s];
+            float cT = concentrations[(j * nx + i) * num_species + s];
             
-            // Calculate advective flux using upwind scheme
-            float flux_adv = FVMUtils::NumericalFlux::upwind(
-                cB_interface, cT_interface, velocity.y);
+            // Calculate advective and diffusive fluxes for interior points
+            float flux_adv = FVMUtils::NumericalFlux::upwind(cB, cT, velocity.y);
+            float flux_diff = FVMUtils::NumericalFlux::diffusive(cB, cT, dy, diffusion.y);
             
-            // Calculate diffusive flux
-            float flux_diff = FVMUtils::NumericalFlux::diffusive(
-                cB, cT, dy, diffusion.y);
-            
-            // Store total flux
             fluxes_y[(j * nx + i) * num_species + s] = flux_adv + flux_diff;
         }
     }
@@ -155,6 +129,7 @@ TransportSolver2D::~TransportSolver2D() {
 }
 
 void TransportSolver2D::solve(std::vector<float>& concentrations) {
+    checkCFLCondition();
     // Copy data to device
     checkCudaErrors(cudaMemcpy(d_concentrations_, concentrations.data(),
                nx_ * ny_ * num_species_ * sizeof(float),
@@ -185,6 +160,7 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
     );
     checkCudaErrors(cudaDeviceSynchronize());
     checkCudaErrors(cudaGetLastError());
+    checkBoundaryFluxes();
         
     // Step 2: Update cell averages using computed fluxes
     updateConcentrationsKernel<<<num_blocks_update, block_size>>>(
@@ -217,4 +193,57 @@ void TransportSolver2D::setVelocity(float vx, float vy) {
 
 void TransportSolver2D::setDiffusion(float dx, float dy) {
     diffusion_ = make_float2(dx, dy);
+}
+
+void TransportSolver2D::checkCFLCondition() {
+    float max_velocity = fmax(abs(velocity_.x), abs(velocity_.y));
+    float diff_cfl = (diffusion_.x/(dx_*dx_) + diffusion_.y/(dy_*dy_)) * dt_;
+    float adv_cfl = max_velocity * dt_ / fmin(dx_, dy_);
+    
+    if (diff_cfl > 0.5 || adv_cfl > 1.0) {
+        std::cerr << "Warning: CFL condition might be violated\n"
+                  << "Diffusive CFL: " << diff_cfl << "\n"
+                  << "Advective CFL: " << adv_cfl << std::endl;
+    }
+}
+
+void TransportSolver2D::checkBoundaryFluxes() {
+    std::vector<float> h_fluxes_x((nx_+1) * ny_ * num_species_);
+    std::vector<float> h_fluxes_y(nx_ * (ny_+1) * num_species_);
+    
+    // Copy fluxes back to host for checking
+    cudaMemcpy(h_fluxes_x.data(), d_fluxes_x_, 
+               h_fluxes_x.size() * sizeof(float), 
+               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_fluxes_y.data(), d_fluxes_y_, 
+               h_fluxes_y.size() * sizeof(float), 
+               cudaMemcpyDeviceToHost);
+    
+    // Check x-direction boundary fluxes
+    for (int j = 0; j < ny_; j++) {
+        for (int s = 0; s < num_species_; s++) {
+            float left_flux = h_fluxes_x[(j * (nx_+1)) * num_species_ + s];
+            float right_flux = h_fluxes_x[(j * (nx_+1) + nx_) * num_species_ + s];
+            if (std::abs(left_flux) > 1e-10 || std::abs(right_flux) > 1e-10) {
+                std::cout << "Warning: Non-zero boundary flux detected in x-direction\n";
+                std::cout << "j=" << j << ", species=" << s 
+                         << ", left=" << left_flux 
+                         << ", right=" << right_flux << std::endl;
+            }
+        }
+    }
+    
+    // Check y-direction boundary fluxes
+    for (int i = 0; i < nx_; i++) {
+        for (int s = 0; s < num_species_; s++) {
+            float bottom_flux = h_fluxes_y[i * num_species_ + s];
+            float top_flux = h_fluxes_y[(ny_ * nx_ + i) * num_species_ + s];
+            if (std::abs(bottom_flux) > 1e-10 || std::abs(top_flux) > 1e-10) {
+                std::cout << "Warning: Non-zero boundary flux detected in y-direction\n";
+                std::cout << "i=" << i << ", species=" << s 
+                         << ", bottom=" << bottom_flux 
+                         << ", top=" << top_flux << std::endl;
+            }
+        }
+    }
 }

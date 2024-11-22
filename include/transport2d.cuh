@@ -9,6 +9,9 @@ public:
     void solve(std::vector<float>& concentrations);
     void setVelocity(float vx, float vy);
     void setDiffusion(float dx, float dy);
+    void checkCFLCondition();
+    void checkBoundaryFluxes();
+
 
 private:
     int nx_, ny_;

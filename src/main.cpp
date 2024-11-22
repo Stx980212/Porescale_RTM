@@ -16,10 +16,10 @@ public:
         float mass_tol;         // Tolerance for mass conservation
         
         ConvergenceParams()
-            : relative_tol(1e-6f)
-            , absolute_tol(1e-8f)
+            : relative_tol(1e-5f)
+            , absolute_tol(1e-7f)
             , max_iterations(50)
-            , mass_tol(1e-10f)
+            , mass_tol(1e-5f)
         {}
     };
     
@@ -121,6 +121,8 @@ public:
         float current_time = 0.0f;
         int step = 0;
         const int save_interval = 100;
+        const float MIN_DT = 1e-5f;  // minimum dt
+        bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
         initial_total_mass_ = calculateTotalMass();
@@ -130,37 +132,41 @@ public:
                   << "Initial total mass: " << initial_total_mass_ << std::endl;
         
         while (current_time < total_time_) {
-            conv_status_.iterations = 0;
-            bool step_converged = false;
+            std::cout << "Current time: " << current_time << ", Step: " << step << std::endl;
+            conv_status_ = ConvergenceStatus();
             
             // Store pre-step state
+            std::cout << "Before transport_solver_.solve" << std::endl;
             std::vector<float> pre_step_concentrations = concentrations_;
+            std::cout << "After transport_solver_.solve" << std::endl;
             
             // Iterative solution for current timestep
             while (conv_status_.iterations < conv_params_.max_iterations) {
                 // Transport step
                 transport_solver_.solve(concentrations_);
+                flag = checkConvergence(current_time);
                 
                 // Check convergence
-                if (checkConvergence(current_time)) {
-                    step_converged = true;
+                if (conv_status_.converged) {
+                    std::cout << "Converged at iteration: " << conv_status_.iterations << std::endl;
+                    dt_ *= 2.0f;
                     break;
+                }
+
+                // Handle non-convergence
+            
+                if (!conv_status_.converged) {
+                    if (dt_ <= MIN_DT) {
+                        std::cout << "Error: Failed to converge even at minimum timestep" << std::endl;
+                        flag = false;
+                        break;  // Exit the simulation
+                    }
+                    concentrations_ = pre_step_concentrations;
+                    dt_ *= 0.5f;
+                    dt_ = std::max(dt_,MIN_DT);
                 }
                 
                 conv_status_.iterations++;
-            }
-            
-            // Handle non-convergence
-            const float MIN_DT = 1e-10f;  // Add this as a class member
-            if (!step_converged) {
-                if (dt_ <= MIN_DT) {
-                    std::cout << "Error: Failed to converge even at minimum timestep" << std::endl;
-                    break;  // Exit the simulation
-                }
-                concentrations_ = pre_step_concentrations;
-                dt_ *= 0.5f;
-                dt_ = std::max(dt_, MIN_DT);
-                continue;
             }
             
             current_time += dt_;
@@ -217,11 +223,10 @@ private:
     std::unique_ptr<IOUtils::HDF5Writer> writer_;
 
     bool checkConvergence(float current_time) {
-        conv_status_ = ConvergenceStatus();
-        
         // Check mass conservation
         float total_mass = calculateTotalMass();
         conv_status_.mass_error = std::abs(total_mass - initial_total_mass_) / initial_total_mass_;
+        std::cout << "Mass error: " << conv_status_.mass_error << std::endl;
         
         if (conv_status_.mass_error > conv_params_.mass_tol) {
             conv_status_.divergence_reason = "Mass conservation violated";
@@ -242,6 +247,7 @@ private:
         }
         
         conv_status_.max_residual = max_relative_change;
+        std::cout << "Max relative change: " << max_relative_change << ", Max absolute change: " << max_absolute_change << std::endl;
         
         // Store current solution for next iteration
         previous_concentrations_ = concentrations_;
@@ -324,7 +330,7 @@ int main() {
     const int ny = 200;
     const float dx = 0.01f;
     const float dy = 0.01f;
-    const float dt = 0.0001f;
+    const float dt = 0.00001f;
     const float total_time = 1.0f;
     const int num_species = 3;
     
@@ -335,15 +341,15 @@ int main() {
         
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
-        conv_params.relative_tol = 1e-6f;
-        conv_params.absolute_tol = 1e-8f;
+        conv_params.relative_tol = 1e-4f;
+        conv_params.absolute_tol = 1e-6f;
         conv_params.max_iterations = 50;
-        conv_params.mass_tol = 1e-8f;
+        conv_params.mass_tol = 1e-3f;
         solver.setConvergenceParams(conv_params);
         
         // Set physical parameters
         solver.setVelocityField(0.0f, 0.0f);
-        solver.setDiffusionCoefficients(0.001f, 0.001f);
+        solver.setDiffusionCoefficients(0.005f, 0.005f);
         
         // Initialize and run
         solver.initialize();
