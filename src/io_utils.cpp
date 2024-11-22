@@ -16,10 +16,11 @@ IOUtils::HDF5Writer::HDF5Writer(
         file_ = H5::H5File(filename, H5F_ACC_TRUNC);
         
         // For FVM, dimensions are based on number of cells
-        hsize_t dims[4] = {static_cast<hsize_t>(ny_),     // Number of cells in y
-                   static_cast<hsize_t>(nx_),      // Number of cells in x
-                   static_cast<hsize_t>(1),        // Unit thickness in z
-                   static_cast<hsize_t>(num_species_)};
+        // In HDF5Writer constructor:
+        hsize_t dims[4] = {static_cast<hsize_t>(nx_),     // x dimension first
+                        static_cast<hsize_t>(ny_),      // y dimension second
+                        static_cast<hsize_t>(1),        // Unit thickness in z
+                        static_cast<hsize_t>(num_species_)};
         dataspace_ = H5::DataSpace(4, dims);
         
         // Add mesh attributes
@@ -62,12 +63,11 @@ void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations
         std::stringstream ss;
         ss << "concentrations_" << std::setw(6) << std::setfill('0') << timestep_;
         
-        // Create dataset using the 4D dataspace
         H5::DataSet dataset = file_.createDataSet(ss.str(),
                                                 H5::PredType::NATIVE_FLOAT,
                                                 dataspace_);
         
-        // Write all data at once - the memory layout remains the same
+        // Write the data
         dataset.write(concentrations.data(), H5::PredType::NATIVE_FLOAT);
         
         // Add time attribute
@@ -101,16 +101,15 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
     for (int i = 0; i < timestep_; ++i) {
         xdmf << "      <Grid Name=\"TimeSeries_" << i << "\" GridType=\"Uniform\">\n"
              << "        <Time Value=\"" << times_[i] << "\"/>\n"
+             // Topology matches the data dimensions for cells
              << "        <Topology TopologyType=\"3DRectMesh\" "
-             << "Dimensions=\"" << (ny_ + 1) << " " << (nx_ + 1) << " 2\"/>\n"
+             << "Dimensions=\"" << nx_ << " " << ny_ << " 2\"/>\n"
              << "        <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n"
-             // Origin point
              << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
              << "            0.0 0.0 0.0\n"
              << "          </DataItem>\n"
-             // Grid spacing
              << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
-             << "            " << dy_ << " " << dx_ << " 1.0\n"
+             << "            " << dx_ << " " << dy_ << " 0.1\n"
              << "          </DataItem>\n"
              << "        </Geometry>\n";
         
@@ -119,15 +118,16 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
             xdmf << "        <Attribute Name=\"Species_" << s 
                  << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
                  << "          <DataItem ItemType=\"HyperSlab\" Dimensions=\"" 
-                 << ny_ << " " << nx_ << " 1\">\n"
+                 << nx_ << " " << ny_ << " 1\">\n"
                  << "            <DataItem Dimensions=\"3 4\" Format=\"XML\">\n"
-                 << "              0 0 0 " << s << "    <!--start indices-->\n"
-                 << "              1 1 1 1        <!--stride-->\n"
-                 << "              " << ny_ << " " << nx_ << " 1 1  <!--count-->\n"
+                 << "              0 0 0 " << s << "\n"
+                 << "              1 1 1 1\n"
+                 << "              " << nx_ << " " << ny_ << " 1 1\n"
                  << "            </DataItem>\n"
-                 << "            <DataItem Dimensions=\"" << ny_ << " " << nx_ 
+                 // This matches our HDF5 data structure exactly
+                 << "            <DataItem Dimensions=\"" << nx_ << " " << ny_ 
                  << " 1 " << num_species_ << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
-                 << "            " << filename_ << ":/concentrations_"
+                 << "              " << filename_ << ":/concentrations_"
                  << std::setw(6) << std::setfill('0') << i << "\n"
                  << "            </DataItem>\n"
                  << "          </DataItem>\n"
