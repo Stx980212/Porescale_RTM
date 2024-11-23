@@ -103,13 +103,13 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
              << "        <Time Value=\"" << times_[i] << "\"/>\n"
              // Topology matches the data dimensions for cells
              << "        <Topology TopologyType=\"3DRectMesh\" "
-             << "Dimensions=\"" << nx_ << " " << ny_ << " 2\"/>\n"
+             << "Dimensions=\"" << nx_+1 << " " << ny_+1 << " 2\"/>\n"
              << "        <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n"
              << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
              << "            0.0 0.0 0.0\n"
              << "          </DataItem>\n"
              << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
-             << "            " << dx_ << " " << dy_ << " 0.1\n"
+             << "            " << dx_ << " " << dy_ << " " << dx_ << "\n"
              << "          </DataItem>\n"
              << "        </Geometry>\n";
         
