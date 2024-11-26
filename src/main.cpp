@@ -88,6 +88,9 @@ public:
     }
 
     void initialize() {
+    // Get the mask from transport solver (add a getMask() method to TransportSolver2D first)
+    const std::vector<int>& mask = transport_solver_.getMask();
+ 
     // Initialize with Gaussian pulses for species A and B
     const float cx = nx_ / 2.0f;
     const float cy = ny_ / 2.0f;
@@ -95,7 +98,16 @@ public:
     
     for (int j = 0; j < ny_; j++) {
         for (int i = 0; i < nx_; i++) {
-            // Distance from center
+            // Check if cell is masked (invalid)
+            if (!mask[j * nx_ + i]) {
+                // Zero all species in masked cells
+                for (int s = 0; s < num_species_; s++) {
+                    concentrations_[(j * nx_ + i) * num_species_ + s] = 0.0f;
+                }
+                continue;
+            }
+            
+            // For valid cells, set initial concentrations
             float dx = (i - cx);
             float dy = (j - cy);
             float r2 = (dx*dx + dy*dy)/(radius*radius);
@@ -139,9 +151,9 @@ public:
             conv_status_ = ConvergenceStatus();
             
             // Store pre-step state
-            std::cout << "Before transport_solver_.solve" << std::endl;
+            //std::cout << "Before transport_solver_.solve" << std::endl;
             std::vector<float> pre_step_concentrations = concentrations_;
-            std::cout << "After transport_solver_.solve" << std::endl;
+            //std::cout << "After transport_solver_.solve" << std::endl;
             
             // Iterative solution for current timestep
             while (conv_status_.iterations < conv_params_.max_iterations) {
@@ -200,6 +212,14 @@ public:
     
     void setDiffusionCoefficients(float dx, float dy) {
         transport_solver_.setDiffusion(dx, dy);
+    }
+
+    void setMask(const std::vector<int>& mask) {
+    transport_solver_.setMask(mask);
+}
+
+TransportSolver2D& getTransportSolver() { 
+        return transport_solver_; 
     }
 
 private:
@@ -334,14 +354,22 @@ int main() {
     const float dx = 0.01f;
     const float dy = 0.01f;
     const float dt = 0.00005f;
-    const float total_time = 1.0f;
-    const int num_species = 3;
+    const float total_time = 1.0f; // time will be counted as hour in the simulation
+    const int num_species = 3; 
+
+    const std::string mask_file = "../Wallula_2810_pore1_final_slice73.raw";
     
     try {
+        std::vector<int> mask = IOUtils::MaskReader::loadRawMask(
+            mask_file, nx, ny, {1, 0}  // 1 for water, 0 for clay pores
+        );
+
         // Create solver
         ReactiveTransportSolver solver(
             nx, ny, dx, dy, dt, total_time, num_species);
         
+        solver.getTransportSolver().setMask(mask);
+
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
         conv_params.relative_tol = 1e-4f;
@@ -352,7 +380,7 @@ int main() {
         
         // Set physical parameters
         solver.setVelocityField(0.0f, 0.0f);
-        solver.setDiffusionCoefficients(0.005f, 0.005f);
+        solver.setDiffusionCoefficients(0.02f, 0.02f);
         
         // Initialize and run
         solver.initialize();

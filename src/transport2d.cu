@@ -8,6 +8,7 @@ __global__ void calculateFluxesKernel(
     const float* concentrations,    // Cell-averaged concentrations
     float* fluxes_x,               // Fluxes at x-interfaces
     float* fluxes_y,               // Fluxes at y-interfaces
+    const int* mask,      
     int nx, int ny,
     float dx, float dy,
     float dt,
@@ -22,7 +23,8 @@ __global__ void calculateFluxesKernel(
     if (i < nx+1 && j < ny) {  // +1 for interfaces
         for (int s = 0; s < num_species; s++) {
             // no-flux boundary
-            if (i == 0 || i == nx) {
+            if (i == 0 || i == nx || 
+                (i > 0 && i < nx && (!mask[(j * nx + i-1)] || !mask[(j * nx + i)]))) {
                 fluxes_x[(j * (nx+1) + i) * num_species + s] = 0.0f;
                 continue;
             }
@@ -49,7 +51,8 @@ __global__ void calculateFluxesKernel(
     if (i < nx && j < ny+1) {
         for (int s = 0; s < num_species; s++) {
             // At domain boundaries, set flux to zero
-            if (j == 0 || j == ny) {
+            if (j == 0 || j == ny || 
+                (j > 0 && j < ny && (!mask[((j-1) * nx + i)] || !mask[(j * nx + i)]))) {
                 fluxes_y[(j * nx + i) * num_species + s] = 0.0f;
                 continue;
             }
@@ -109,13 +112,18 @@ __global__ void updateConcentrationsKernel(
 
 TransportSolver2D::TransportSolver2D(
     int nx, int ny, float dx, float dy, float dt, int num_species)
-    : nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), num_species_(num_species) {
+    : nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), num_species_(num_species), d_mask_(nullptr) {
     // Allocate device memory
     checkCudaErrors(cudaMalloc(&d_concentrations_, nx * ny * num_species * sizeof(float)));
     checkCudaErrors(cudaMalloc(&d_concentrations_new_, nx * ny * num_species * sizeof(float)));
     checkCudaErrors(cudaMalloc(&d_fluxes_x_, (nx+1) * ny * num_species * sizeof(float)));
     checkCudaErrors(cudaMalloc(&d_fluxes_y_, nx * (ny+1) * num_species * sizeof(float)));
      
+    // Allocate mask memory
+    checkCudaErrors(cudaMalloc(&d_mask_, nx * ny * sizeof(int)));
+    // Initialize mask to all valid (1)
+    checkCudaErrors(cudaMemset(d_mask_, 1, nx * ny * sizeof(int)));
+
     // Initialize parameters
     velocity_ = make_float2(0.0f, 0.0f);
     diffusion_ = make_float2(0.001f, 0.001f);
@@ -126,6 +134,9 @@ TransportSolver2D::~TransportSolver2D() {
     checkCudaErrors(cudaFree(d_concentrations_new_));
     checkCudaErrors(cudaFree(d_fluxes_x_));
     checkCudaErrors(cudaFree(d_fluxes_y_));
+    if (d_mask_) {
+        checkCudaErrors(cudaFree(d_mask_));
+    }
 }
 
 void TransportSolver2D::solve(std::vector<float>& concentrations) {
@@ -151,6 +162,7 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
         d_concentrations_,
         d_fluxes_x_,
         d_fluxes_y_,
+        d_mask_,
         nx_, ny_,
         dx_, dy_,
         dt_,
@@ -246,4 +258,23 @@ void TransportSolver2D::checkBoundaryFluxes() {
             }
         }
     }
+}
+
+void TransportSolver2D::setMask(const std::vector<int>& mask) {
+    if (mask.size() != nx_ * ny_) {
+        throw std::runtime_error("Mask size does not match domain dimensions");
+    }
+    
+    // Copy mask to device
+    checkCudaErrors(cudaMemcpy(d_mask_, mask.data(), 
+                              nx_ * ny_ * sizeof(int), 
+                              cudaMemcpyHostToDevice));
+}
+
+std::vector<int> TransportSolver2D::getMask() const {
+    std::vector<int> host_mask(nx_ * ny_);
+    checkCudaErrors(cudaMemcpy(host_mask.data(), d_mask_,
+                             nx_ * ny_ * sizeof(int),
+                             cudaMemcpyDeviceToHost));
+    return host_mask;
 }

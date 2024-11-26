@@ -9,8 +9,11 @@ public:
     void solve(std::vector<float>& concentrations);
     void setVelocity(float vx, float vy);
     void setDiffusion(float dx, float dy);
+    void setMask(const std::vector<int>& mask);
     void checkCFLCondition();
     void checkBoundaryFluxes();
+
+    std::vector<int> getMask() const;
 
 
 private:
@@ -24,4 +27,6 @@ private:
     float* d_fluxes_y_;      // Fluxes at y-interfaces
     float2 velocity_;
     float2 diffusion_;
+    int* d_mask_;        
+    bool has_mask_;
 };

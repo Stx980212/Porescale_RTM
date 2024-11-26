@@ -7,6 +7,13 @@
 
 namespace IOUtils {
 
+class MaskReader {
+public:
+    static std::vector<int> loadRawMask(const std::string& filename, 
+                                      int nx, int ny,
+                                      const std::vector<int>& valid_labels = {2, 3});
+};
+
 class HDF5Writer {
 public:
     HDF5Writer(const std::string& filename, 
@@ -18,6 +25,7 @@ public:
     
     void writeTimestep(const std::vector<float>& concentrations, float time);
     void createXDMF(const std::string& xdmf_filename);
+    void writeMask(const std::vector<int>& mask, const std::string& name);
     
 private:
     std::string filename_;

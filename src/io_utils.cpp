@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>  
 #include <stdexcept>
+#include <algorithm>
 
 IOUtils::HDF5Writer::HDF5Writer(
     const std::string& filename, int nx, int ny, int num_species,
@@ -140,4 +141,66 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
     xdmf << "    </Grid>\n"
          << "  </Domain>\n"
          << "</Xdmf>\n";
+}
+
+void IOUtils::HDF5Writer::writeMask(const std::vector<int>& mask, const std::string& name) {
+    try {
+        // Create dataspace for the mask
+        hsize_t dims[2] = {static_cast<hsize_t>(nx_), static_cast<hsize_t>(ny_)};
+        H5::DataSpace mask_space(2, dims);
+        
+        // Create the dataset
+        H5::DataSet dataset = file_.createDataSet(
+            "/" + name,
+            H5::PredType::NATIVE_INT,
+            mask_space);
+        
+        // Write the mask data
+        dataset.write(mask.data(), H5::PredType::NATIVE_INT);
+        
+        // Add attribute to indicate this is a mask
+        H5::DataSpace attr_space(H5S_SCALAR);
+        H5::StrType str_type(H5::PredType::C_S1, 256);
+        H5::Attribute type_attr = dataset.createAttribute(
+            "type",
+            str_type,
+            attr_space);
+        const char* data_type = "domain_mask";
+        type_attr.write(str_type, data_type);
+        
+    } catch (const H5::Exception& e) {
+        throw std::runtime_error(
+            "Failed to write mask: " + std::string(e.getCDetailMsg()));
+    }
+}
+
+std::vector<int> IOUtils::MaskReader::loadRawMask(
+    const std::string& filename, 
+    int nx, int ny,
+    const std::vector<int>& valid_labels) {
+    
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open mask file: " + filename);
+    }
+    
+    // Read the raw 8-bit data
+    std::vector<unsigned char> raw_data(nx * ny);
+    file.read(reinterpret_cast<char*>(raw_data.data()), nx * ny);
+    
+    if (file.gcount() != nx * ny) {
+        throw std::runtime_error(
+            "Invalid mask file size. Expected " + std::to_string(nx * ny) + 
+            " bytes, got " + std::to_string(file.gcount()));
+    }
+    
+    // Convert to mask format
+    std::vector<int> mask(nx * ny, 0);
+    for (int i = 0; i < nx * ny; i++) {
+        unsigned char val = raw_data[i];
+        // Check if the value is in valid_labels
+        mask[i] = std::find(valid_labels.begin(), valid_labels.end(), val) != valid_labels.end() ? 1 : 0;
+    }
+    
+    return mask;
 }
