@@ -174,10 +174,11 @@ void IOUtils::HDF5Writer::writeMask(const std::vector<int>& mask, const std::str
     }
 }
 
-std::vector<int> IOUtils::MaskReader::loadRawMask(
+IOUtils::MaskReader::MaskData IOUtils::MaskReader::loadRawMask(
     const std::string& filename, 
     int nx, int ny,
-    const std::vector<int>& valid_labels) {
+    int water_label,
+    int co2_label) {
     
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
@@ -194,13 +195,39 @@ std::vector<int> IOUtils::MaskReader::loadRawMask(
             " bytes, got " + std::to_string(file.gcount()));
     }
     
-    // Convert to mask format
-    std::vector<int> mask(nx * ny, 0);
-    for (int i = 0; i < nx * ny; i++) {
-        unsigned char val = raw_data[i];
-        // Check if the value is in valid_labels
-        mask[i] = std::find(valid_labels.begin(), valid_labels.end(), val) != valid_labels.end() ? 1 : 0;
+    MaskData result;
+    result.raw_labels = raw_data;
+    result.active_cells.resize(nx * ny, 0);
+    result.interface_cells.resize(nx * ny, 0);
+    
+    // Helper function to check if a cell is at the interface
+    auto isInterface = [&](int i, int j) {
+        if (i < 0 || i >= nx || j < 0 || j >= ny) return false;
+        return raw_data[i + j * nx] == water_label;
+    };
+    
+    // Process the mask
+    for (int j = 0; j < ny; j++) {
+        for (int i = 0; i < nx; i++) {
+            int idx = i + j * nx;
+            unsigned char val = raw_data[idx];
+            
+            // Set active cells (water phase)
+            if (val == water_label) {
+                result.active_cells[idx] = 1;
+                
+                // Check if this water cell is adjacent to a CO2 bubble
+                bool is_interface = false;
+                // Check neighboring cells (4-connectivity)
+                if ((i > 0 && raw_data[idx-1] == co2_label) ||
+                    (i < nx-1 && raw_data[idx+1] == co2_label) ||
+                    (j > 0 && raw_data[idx-nx] == co2_label) ||
+                    (j < ny-1 && raw_data[idx+nx] == co2_label)) {
+                    result.interface_cells[idx] = 1;
+                }
+            }
+        }
     }
     
-    return mask;
+    return result;
 }

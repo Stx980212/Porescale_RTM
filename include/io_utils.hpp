@@ -9,9 +9,16 @@ namespace IOUtils {
 
 class MaskReader {
 public:
-    static std::vector<int> loadRawMask(const std::string& filename, 
-                                      int nx, int ny,
-                                      const std::vector<int>& valid_labels = {2, 3});
+    struct MaskData {
+        std::vector<int> active_cells;      // 1 for active cells, 0 for inactive
+        std::vector<int> interface_cells;   // 1 for water cells at CO2 interface, 0 otherwise
+        std::vector<unsigned char> raw_labels; // Store original labels
+    };
+    
+    static MaskData loadRawMask(const std::string& filename, 
+                               int nx, int ny,
+                               int water_label = 1,    // Label for water phase
+                               int co2_label = 2);     // Label for sc-CO2 phase
 };
 
 class HDF5Writer {

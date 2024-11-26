@@ -13,6 +13,10 @@ public:
     void checkCFLCondition();
     void checkBoundaryFluxes();
 
+
+    std::vector<float> getDiffusionCoefficients() const;
+    void setModifiedDiffusion(const std::vector<float>& modified_diffusion);
+
     std::vector<int> getMask() const;
 
 
@@ -27,6 +31,8 @@ private:
     float* d_fluxes_y_;      // Fluxes at y-interfaces
     float2 velocity_;
     float2 diffusion_;
-    int* d_mask_;        
+    int* d_mask_;     
+    float* d_modified_diffusion_;  // Add new member for modified diffusion coefficients
+    bool has_modified_diffusion_;  // Flag to track if modified diffusion is being used   
     bool has_mask_;
 };

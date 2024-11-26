@@ -43,15 +43,24 @@ public:
         float dx, float dy,
         float dt,
         float total_time,
-        int num_species
-    ) : nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), initial_dt_(dt),
+        int num_species, 
+        float Hs_co2,
+        float clay_porosity = 0.3f,    // Default clay porosity
+        float clay_tortuosity = 0.5f  // Default clay tortuosity
+    ): nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), initial_dt_(dt),
         total_time_(total_time), num_species_(num_species),
-        transport_solver_(nx, ny, dx, dy, dt, num_species) {
+        transport_solver_(nx, ny, dx, dy, dt, num_species),
+        Hs_co2_(Hs_co2) {
         
         // Initialize concentrations
         concentrations_.resize(nx * ny * num_species);
         previous_concentrations_.resize(nx * ny * num_species);
-        
+        interface_cells_.resize(nx * ny, 0);
+        clay_cells_.resize(nx * ny, 0);
+
+        const float P_co2 = 1.0f; // Partial pressure of CO2 in atmospheres
+        co2_saturation_conc_ = Hs_co2_ * P_co2;
+
         // Set default convergence parameters
         conv_params_ = ConvergenceParams();
         
@@ -131,6 +140,25 @@ public:
     // Create XDMF file after first timestep is written
     writer_->createXDMF("reactive_transport.xmf");
 }
+
+    void setClayCells(const std::vector<int>& clay_cells) {
+        clay_cells_ = clay_cells;
+        
+        // Update transport properties for clay cells
+        std::vector<float> effective_diffusion = transport_solver_.getDiffusionCoefficients();
+        std::vector<float> modified_diffusion = effective_diffusion;
+        
+        // Modify diffusion coefficients in clay cells
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (clay_cells_[i]) {
+                // Apply clay porosity and tortuosity to diffusion coefficients
+                modified_diffusion[i] *= clay_porosity_ * clay_tortuosity_;
+            }
+        }
+
+        transport_solver_.setModifiedDiffusion(modified_diffusion);
+    }
+
     
     void solve() {
         float current_time = 0.0f;
@@ -147,6 +175,9 @@ public:
                   << "Initial total mass: " << initial_total_mass_ << std::endl;
         
         while (current_time < total_time_) {
+            // Apply boundary conditions before transport step
+            applyBoundaryConditions();  // Apply boundary conditions
+            applyClayProperties();      // Apply clay properties to transport
             std::cout << "Current time: " << current_time << ", Step: " << step << std::endl;
             conv_status_ = ConvergenceStatus();
             
@@ -216,10 +247,14 @@ public:
 
     void setMask(const std::vector<int>& mask) {
     transport_solver_.setMask(mask);
-}
+    }
 
-TransportSolver2D& getTransportSolver() { 
-        return transport_solver_; 
+    void setInterfaceCells(const std::vector<int>& interface_cells) {
+        interface_cells_ = interface_cells;
+    }
+
+    TransportSolver2D& getTransportSolver() { 
+        return transport_solver_;             
     }
 
 private:
@@ -230,7 +265,15 @@ private:
     float initial_dt_;
     float total_time_;
     int num_species_;
-    
+
+    float Hs_co2_;  // Henry's coefficient for CO2
+    std::vector<int> interface_cells_; // Store interface cells
+    float co2_saturation_conc_; // Saturation concentration of CO2 in water
+
+    std::vector<int> clay_cells_;     // Store clay cell locations
+    float clay_porosity_;             // Porosity of clay cells
+    float clay_tortuosity_;           // Tortuosity factor for clay cells
+
     // Solvers and data
     TransportSolver2D transport_solver_;
     ReactionParameters reaction_params_;
@@ -345,6 +388,33 @@ private:
                   << "Max values - A: " << max_A << ", B: " << max_B 
                   << ", C: " << max_C << std::endl;
     }
+
+    void applyBoundaryConditions() {
+        // Apply Henry's law at the CO2-water interface
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (interface_cells_[i]) {
+                // Set CO2 concentration to saturation value at interface cells
+                // Assuming CO2 is the first species (index 0)
+                concentrations_[i * num_species_] = co2_saturation_conc_;
+            }
+        }
+    }
+
+    void applyClayProperties() {
+        // Modify transport parameters in clay cells if needed
+        // This could include adjusting diffusion coefficients, reaction rates, etc.
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (clay_cells_[i]) {
+                // Apply clay-specific modifications to transport/reaction parameters
+                // For example, different reaction rates in clay vs water
+                for (int s = 0; s < num_species_; s++) {
+                    int idx = i * num_species_ + s;
+                    // Apply clay porosity to concentrations if needed
+                    concentrations_[idx] *= clay_porosity_;
+                }
+            }
+        }
+    }
 };
 
 int main() {
@@ -357,18 +427,25 @@ int main() {
     const float total_time = 1.0f; // time will be counted as hour in the simulation
     const int num_species = 3; 
 
+    const float Hs_co2 = 0.034f; // Henry's coefficient for CO2 in water mol/(L⋅atm) at 25°C 
+    const float clay_porosity = 0.3f; // Typical clay porosity
+    const float clay_tortuosity = 0.5f; // Typical clay tortuosity
+
     const std::string mask_file = "../Wallula_2810_pore1_final_slice73.raw";
     
     try {
-        std::vector<int> mask = IOUtils::MaskReader::loadRawMask(
-            mask_file, nx, ny, {1, 0}  // 1 for water, 0 for clay pores
+        auto mask_data = IOUtils::MaskReader::loadRawMask(
+            mask_file, nx, ny, 1, 2  // water_label=1, co2_label=2
         );
 
         // Create solver
         ReactiveTransportSolver solver(
-            nx, ny, dx, dy, dt, total_time, num_species);
+            nx, ny, dx, dy, dt, total_time, num_species, Hs_co2,
+            clay_porosity, clay_tortuosity);
         
-        solver.getTransportSolver().setMask(mask);
+        solver.getTransportSolver().setMask(mask_data.active_cells);
+        solver.setInterfaceCells(mask_data.interface_cells);
+        solver.setClayCells(mask_data.clay_cells);
 
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
