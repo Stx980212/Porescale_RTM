@@ -103,6 +103,7 @@ __global__ void updateConcentrationsKernel(
     const float* concentrations,
     const float* fluxes_x,
     const float* fluxes_y,
+    const float* cell_volumes,
     int nx, int ny,
     float dx, float dy,
     float dt,
@@ -123,20 +124,26 @@ __global__ void updateConcentrationsKernel(
         float flux_right = fluxes_x[(j * (nx+1) + i + 1) * num_species + s];
         float flux_bottom = fluxes_y[(j * nx + i) * num_species + s];
         float flux_top = fluxes_y[((j+1) * nx + i) * num_species + s];
-        
-        // Update cell average using flux differencing
-        // This ensures conservation
-        concentrations_new[idx] = concentrations[idx] -
-            (dt/dx) * (flux_right - flux_left) -
-            (dt/dy) * (flux_top - flux_bottom);
-            
-        concentrations_new[idx] = UNDER_RELAX * concentrations_new[idx] + 
-                         (1.0f - UNDER_RELAX) * concentrations[idx];
+
+        // Calculate mass change
+        float dmass = -dt * (
+            (flux_right - flux_left) * dy +  // Mass flux through x-faces
+            (flux_top - flux_bottom) * dx    // Mass flux through y-faces
+        );
+
+        // Update concentration based on mass change and cell volume
+        float new_mass = concentrations[idx] * cell_volumes[j * nx + i] + dmass;
+        float new_conc = new_mass / cell_volumes[j * nx + i];
+
+        // Apply underrelaxation
+        concentrations_new[idx] = UNDER_RELAX * new_conc + 
+                                 (1.0f - UNDER_RELAX) * concentrations[idx];
 
         // Ensure positivity
         concentrations_new[idx] = fmaxf(0.0f, concentrations_new[idx]);
     }
 }
+
 
 TransportSolver2D::TransportSolver2D(
     int nx, int ny, float dx, float dy, float dt, int num_species)
@@ -161,6 +168,14 @@ TransportSolver2D::TransportSolver2D(
     checkCudaErrors(cudaMemcpy(d_modified_diffusion_, default_diffusion.data(),
                               nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
+    // Allocate memory for cell volumes
+    checkCudaErrors(cudaMalloc(&d_cell_volumes_, nx * ny * sizeof(float)));
+    
+    // Initialize with unit volumes
+    std::vector<float> unit_volumes(nx * ny, 1.0f);
+    checkCudaErrors(cudaMemcpy(d_cell_volumes_, unit_volumes.data(),
+                              nx * ny * sizeof(float), cudaMemcpyHostToDevice));
+
     // Initialize parameters
     velocity_ = make_float2(0.0f, 0.0f);
     diffusion_ = make_float2(0.001f, 0.001f);
@@ -176,6 +191,9 @@ TransportSolver2D::~TransportSolver2D() {
     }
     if (d_modified_diffusion_) {
         checkCudaErrors(cudaFree(d_modified_diffusion_));
+    }
+    if (d_cell_volumes_) {
+        checkCudaErrors(cudaFree(d_cell_volumes_));
     }
 }
 
@@ -207,6 +225,44 @@ void TransportSolver2D::setModifiedDiffusion(const std::vector<float>& modified_
                               nx_ * ny_ * sizeof(float),
                               cudaMemcpyHostToDevice));
     has_modified_diffusion_ = true;
+}
+
+void TransportSolver2D::setCellVolumes(const std::vector<float>& volumes) {
+    if (volumes.size() != nx_ * ny_) {
+        throw std::runtime_error("Cell volumes array size does not match domain dimensions");
+    }
+    
+    checkCudaErrors(cudaMemcpy(d_cell_volumes_, volumes.data(),
+                              nx_ * ny_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
+}
+
+std::vector<float> TransportSolver2D::getCellVolumes() const {
+    std::vector<float> host_volumes(nx_ * ny_);
+    checkCudaErrors(cudaMemcpy(host_volumes.data(), d_cell_volumes_,
+                              nx_ * ny_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+    return host_volumes;
+}
+
+float TransportSolver2D::getTotalMass() const {
+    std::vector<float> host_concentrations(nx_ * ny_ * num_species_);
+    std::vector<float> host_volumes(nx_ * ny_);
+    
+    checkCudaErrors(cudaMemcpy(host_concentrations.data(), d_concentrations_,
+                              nx_ * ny_ * num_species_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(host_volumes.data(), d_cell_volumes_,
+                              nx_ * ny_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+    
+    float total_mass = 0.0f;
+    for (int i = 0; i < nx_ * ny_; ++i) {
+        for (int s = 0; s < num_species_; ++s) {
+            total_mass += host_concentrations[i * num_species_ + s] * host_volumes[i];
+        }
+    }
+    return total_mass;
 }
 
 void TransportSolver2D::solve(std::vector<float>& concentrations) {
@@ -252,6 +308,7 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
         d_concentrations_,
         d_fluxes_x_,
         d_fluxes_y_,
+        d_cell_volumes_,
         nx_, ny_,
         dx_, dy_,
         dt_,

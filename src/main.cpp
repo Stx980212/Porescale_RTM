@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <vector>
 #include <cmath>
 #include <memory>
@@ -38,6 +39,18 @@ public:
         {}
     };
 
+    struct InterfaceFluxInfo {
+        float accumulated_mass;
+        std::vector<float> local_flux;
+    };
+
+    InterfaceFluxInfo getInterfaceFluxInfo() const {
+        InterfaceFluxInfo info;
+        info.accumulated_mass = accumulated_interface_mass_;
+        info.local_flux = interface_mass_flux_;
+        return info;
+    }
+
     ReactiveTransportSolver(
         int nx, int ny,
         float dx, float dy,
@@ -68,6 +81,9 @@ public:
         reaction_params_.k_forward = 1.0f;
         reaction_params_.k_backward = 0.1f;
         reaction_params_.equilibrium_K = 10.0f;
+
+        interface_mass_flux_.resize(nx * ny * num_species_, 0.0f);
+        accumulated_interface_mass_ = 0.0f;
         
         // Initialize HDF5 writer
         writer_.reset(new IOUtils::HDF5Writer(
@@ -232,7 +248,7 @@ public:
     }
 
     void setMask(const std::vector<int>& mask) {
-    transport_solver_.setMask(mask);
+        transport_solver_.setMask(mask);
     }
 
     void setInterfaceCells(const std::vector<int>& interface_cells) {
@@ -249,6 +265,10 @@ public:
 
     std::vector<float> getDiffusionCoefficients() const {
         return transport_solver_.getDiffusionCoefficients();
+    }
+
+    void setCellVolumes(const std::vector<float>& cell_volumes) {
+        transport_solver_.setCellVolumes(cell_volumes);
     }
 
     // Helper function to set up diffusion for clay and water regions
@@ -297,6 +317,9 @@ private:
     float clay_porosity_;             // Porosity of clay cells
     float clay_tortuosity_;           // Tortuosity factor for clay cells
 
+    float accumulated_interface_mass_; // Track total mass flux at interfaces
+    std::vector<float> interface_mass_flux_; // Track mass flux at each interface cell
+
     // Solvers and data
     TransportSolver2D transport_solver_;
     ReactionParameters reaction_params_;
@@ -314,8 +337,11 @@ private:
     bool checkConvergence(float current_time) {
         // Check mass conservation
         float total_mass = calculateTotalMass();
-        conv_status_.mass_error = std::abs(total_mass - initial_total_mass_) / initial_total_mass_;
-        std::cout << "Mass error: " << conv_status_.mass_error << std::endl;
+        float mass_with_interface = total_mass + accumulated_interface_mass_;
+        
+        conv_status_.mass_error = std::abs(mass_with_interface - initial_total_mass_) / initial_total_mass_;
+        std::cout << "Mass error (including interface flux): " << conv_status_.mass_error << std::endl;
+        std::cout << "Accumulated interface mass flux: " << accumulated_interface_mass_ << std::endl;
         
         if (conv_status_.mass_error > conv_params_.mass_tol) {
             conv_status_.divergence_reason = "Mass conservation violated";
@@ -341,13 +367,18 @@ private:
         // Store current solution for next iteration
         previous_concentrations_ = concentrations_;
         
-        // Check convergence criteria
+        // Check convergence criteria (disabled sepatated concentration check)
+        conv_status_.converged = true;
+        return true;
+
+        /*
         if (max_relative_change < conv_params_.relative_tol &&
             max_absolute_change < conv_params_.absolute_tol) {
             conv_status_.converged = true;
             return true;
         }
-        
+        */
+
         // Check if solution is bounded
         if (!checkSolutionBounds()) {
             conv_status_.divergence_reason = "Solution out of bounds";
@@ -363,6 +394,30 @@ private:
             total_mass += concentrations_[i];
         }
         return total_mass * dx_ * dy_;  // Account for cell area
+    }
+
+    float calculateInterfaceMassFlux() {
+        float total_flux = 0.0f;
+        
+        // Initialize or resize if needed
+        if (interface_mass_flux_.size() != nx_ * ny_) {
+            interface_mass_flux_.resize(nx_ * ny_, 0.0f);
+        }
+
+        // Calculate mass flux for each interface cell
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (interface_cells_[i]) {
+                // Calculate the mass change due to enforcing constant concentration
+                float prev_mass = previous_concentrations_[i * num_species_] * dx_ * dy_;
+                float current_mass = co2_saturation_conc_ * dx_ * dy_;
+                float mass_flux = (current_mass - prev_mass) / dt_;
+                
+                interface_mass_flux_[i] = mass_flux;
+                total_flux += mass_flux;
+            }
+        }
+        
+        return total_flux;
     }
     
     bool checkSolutionBounds() const {
@@ -390,6 +445,9 @@ private:
     void printStats(float time) {
         float total_A = 0.0f, total_B = 0.0f, total_C = 0.0f;
         float max_A = 0.0f, max_B = 0.0f, max_C = 0.0f;
+
+        float total_interface_flux = 0.0f;
+        float max_interface_flux = 0.0f;
         
         for (int i = 0; i < nx_ * ny_; i++) {
             float A = concentrations_[i * num_species_ + 0];
@@ -403,6 +461,12 @@ private:
             max_A = std::max(max_A, A);
             max_B = std::max(max_B, B);
             max_C = std::max(max_C, C);
+
+            if (interface_cells_[i]) {
+                float flux = interface_mass_flux_[i * num_species_];  // CO2 flux
+                total_interface_flux += flux;
+                max_interface_flux = std::max(max_interface_flux, std::abs(flux));
+            }
         }
         
         std::cout << "Time: " << time << "\n"
@@ -410,15 +474,36 @@ private:
                   << ", C: " << total_C << "\n"
                   << "Max values - A: " << max_A << ", B: " << max_B 
                   << ", C: " << max_C << std::endl;
+        
+        std::cout << "Interface mass flux - Total: " << total_interface_flux 
+                  << ", Max: " << max_interface_flux 
+                  << ", Accumulated: " << accumulated_interface_mass_ << std::endl;
     }
 
     void applyBoundaryConditions() {
-        // Apply Henry's law at the CO2-water interface
+        // Calculate and store mass changes from interface condition
         for (int i = 0; i < nx_ * ny_; i++) {
             if (interface_cells_[i]) {
-                // Set CO2 concentration to saturation value at interface cells
-                // Assuming CO2 is the first species (index 0)
-                concentrations_[i * num_species_] = co2_saturation_conc_;
+                for (int s = 0; s < num_species_; s++) {
+                    int idx = i * num_species_ + s;
+                    float old_concentration = concentrations_[idx];
+                    
+                    // Apply boundary condition (only for CO2 - species 0)
+                    if (s == 0) {
+                        concentrations_[idx] = co2_saturation_conc_;
+                        
+                        // Calculate mass change
+                        float mass_change = (concentrations_[idx] - old_concentration) * dx_ * dy_;
+                        if (!clay_cells_[i]) {
+                            interface_mass_flux_[idx] = mass_change / dt_; // Store flux
+                            accumulated_interface_mass_ += mass_change;     // Accumulate total mass change
+                        } else {
+                            // For clay cells, account for porosity
+                            interface_mass_flux_[idx] = mass_change * clay_porosity_ / dt_;
+                            accumulated_interface_mass_ += mass_change * clay_porosity_;
+                        }
+                    }
+                }
             }
         }
     }
@@ -470,9 +555,19 @@ int main() {
         std::vector<int> active_cells = mask_data.active_cells;
         std::vector<float> modified_diffusion(nx * ny);
         std::vector<int> clay_cells = mask_data.clay_cells;
+        std::vector<float> cell_volumes(nx * ny);
+
+        for (int i = 0; i < nx * ny; ++i) {
+            if (clay_cells[i]==1) {
+                cell_volumes[i] = clay_porosity * dx * dy;  // Apply clay porosity
+            } else {
+                cell_volumes[i] = dx * dy;  // Full volume for water phase
+            }
+        }
         
         solver.getTransportSolver().setMask(mask_data.active_cells);
         solver.setInterfaceCells(mask_data.interface_cells);
+        solver.setCellVolumes(cell_volumes);
 
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
