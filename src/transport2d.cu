@@ -109,7 +109,7 @@ __global__ void updateConcentrationsKernel(
     float dt,
     int num_species
 ) {
-    const float UNDER_RELAX = 0.5f;
+    const float UNDER_RELAX = 1.0f;
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;

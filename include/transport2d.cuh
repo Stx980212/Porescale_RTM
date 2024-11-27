@@ -20,6 +20,10 @@ public:
     std::vector<int> getMask() const;
     std::vector<float> getCellVolumes() const;
 
+    void setInterfaceConcentration(float co2_interface_conc) {
+        interface_concentration_ = co2_interface_conc;
+    }
+
 private:
     int nx_, ny_;
     float dx_, dy_;
@@ -36,4 +40,7 @@ private:
     float* d_modified_diffusion_;  // Add new member for modified diffusion coefficients
     bool has_modified_diffusion_;  // Flag to track if modified diffusion is being used   
     bool has_mask_;
+
+    float interface_concentration_; // Concentration at scCO2-water interface
+    float* d_interface_flux_;      // Store interface flux for each cell
 };

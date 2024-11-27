@@ -166,7 +166,7 @@ public:
         float current_time = 0.0f;
         int step = 0;
         const int save_interval = 100;
-        const float MIN_DT = 5e-5f;  // minimum dt
+        const float MIN_DT = 1e-5f;  // minimum dt
         bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
@@ -325,6 +325,7 @@ private:
     ReactionParameters reaction_params_;
     std::vector<float> concentrations_;
     std::vector<float> previous_concentrations_;
+    std::vector<float> previous_CO2_mass_;
     
     // Convergence handling
     ConvergenceParams conv_params_;
@@ -337,9 +338,11 @@ private:
     bool checkConvergence(float current_time) {
         // Check mass conservation
         float total_mass = calculateTotalMass();
-        float mass_with_interface = total_mass + accumulated_interface_mass_;
         
-        conv_status_.mass_error = std::abs(mass_with_interface - initial_total_mass_) / initial_total_mass_;
+        // Check if the total CO2 inside the domain equals to 
+        conv_status_.mass_error = std::abs(accumulated_interface_mass_ - total_mass + initial_total_mass_) / accumulated_interface_mass_;
+        std::cout << "initial total mass:  " << initial_total_mass_ << std::endl;
+        std::cout << "total CO2 mass inside the domain: " << total_mass << std::endl;
         std::cout << "Mass error (including interface flux): " << conv_status_.mass_error << std::endl;
         std::cout << "Accumulated interface mass flux: " << accumulated_interface_mass_ << std::endl;
         
@@ -390,10 +393,29 @@ private:
     
     float calculateTotalMass() const {
         float total_mass = 0.0f;
-        for (size_t i = 0; i < concentrations_.size(); ++i) {
-            total_mass += concentrations_[i];
+        int invalid_count = 0;
+        
+        for (size_t i = 0; i < nx_ * ny_; ++i) {
+            float cell_volume = dx_ * dy_;
+            if (clay_cells_[i]) {
+                cell_volume *= clay_porosity_;
+            }
+            
+            for (int s = 0; s < num_species_; s++) {
+                float conc = concentrations_[i * num_species_ + s];
+                if (std::isfinite(conc)) {
+                    total_mass += conc * cell_volume;
+                } else {
+                    invalid_count++;
+                }
+            }
         }
-        return total_mass * dx_ * dy_;  // Account for cell area
+        
+        if (invalid_count > 0) {
+            std::cout << "Warning: " << invalid_count << " invalid concentrations found in mass calculation" << std::endl;
+        }
+        
+        return total_mass;
     }
 
     float calculateInterfaceMassFlux() {
@@ -500,7 +522,7 @@ private:
                         } else {
                             // For clay cells, account for porosity
                             interface_mass_flux_[idx] = mass_change * clay_porosity_ / dt_;
-                            accumulated_interface_mass_ += mass_change * clay_porosity_;
+                            accumulated_interface_mass_ += mass_change;
                         }
                     }
                 }
