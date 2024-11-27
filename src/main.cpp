@@ -522,7 +522,7 @@ private:
                         } else {
                             // For clay cells, account for porosity
                             interface_mass_flux_[idx] = mass_change * clay_porosity_ / dt_;
-                            accumulated_interface_mass_ += mass_change;
+                            accumulated_interface_mass_ += mass_change * clay_porosity_;
                         }
                     }
                 }
