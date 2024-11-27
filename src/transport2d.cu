@@ -18,8 +18,7 @@ __global__ void calculateFluxesKernel(
     float dt,
     int num_species,
     float2 velocity,
-    float2 diffusion,
-    float diff_coef
+    float2 diffusion
 ) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -41,10 +40,11 @@ __global__ void calculateFluxesKernel(
             //float cL_interface, cR_interface;
             //FVMUtils::Reconstruction::muscl(cL, cR, dx, cL_interface, cR_interface);
             
-             // Calculate advective flux using upwind scheme
+            // Calculate advective flux using upwind scheme
             float flux_adv = FVMUtils::NumericalFlux::upwind(cL, cR, velocity.x);
 
             // Get appropriate diffusion coefficient
+            float diff_coef;
             if (has_modified_diffusion) {
                 // Average diffusion coefficients of adjacent cells
                 float diff_L = modified_diffusion[j * nx + i-1];
@@ -79,6 +79,7 @@ __global__ void calculateFluxesKernel(
             float flux_adv = FVMUtils::NumericalFlux::upwind(cB, cT, velocity.y);
 
             // Get appropriate diffusion coefficient
+            float diff_coef;
             if (has_modified_diffusion) {
                 // Average diffusion coefficients of adjacent cells
                 float diff_B = modified_diffusion[(j-1) * nx + i];
@@ -156,7 +157,7 @@ TransportSolver2D::TransportSolver2D(
     checkCudaErrors(cudaMalloc(&d_modified_diffusion_, nx * ny * sizeof(float)));
 
     // Initialize with default diffusion values
-    std::vector<float> default_diffusion(nx * ny, 0.001f);
+    std::vector<float> default_diffusion(nx * ny, diffusion_.x);
     checkCudaErrors(cudaMemcpy(d_modified_diffusion_, default_diffusion.data(),
                               nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -197,6 +198,11 @@ void TransportSolver2D::setModifiedDiffusion(const std::vector<float>& modified_
         throw std::runtime_error("Modified diffusion array size does not match domain dimensions");
     }
 
+    // Allocate device memory if not already done
+    if (!has_modified_diffusion_) {
+        checkCudaErrors(cudaMalloc(&d_modified_diffusion_, nx_ * ny_ * sizeof(float)));
+    }
+
     checkCudaErrors(cudaMemcpy(d_modified_diffusion_, modified_diffusion.data(),
                               nx_ * ny_ * sizeof(float),
                               cudaMemcpyHostToDevice));
@@ -227,6 +233,8 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
         d_fluxes_x_,
         d_fluxes_y_,
         d_mask_,
+        d_modified_diffusion_,  // Add modified diffusion array
+        has_modified_diffusion_, // Add flag for using modified diffusion
         nx_, ny_,
         dx_, dy_,
         dt_,

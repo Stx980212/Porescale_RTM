@@ -177,6 +177,7 @@ void IOUtils::HDF5Writer::writeMask(const std::vector<int>& mask, const std::str
 IOUtils::MaskReader::MaskData IOUtils::MaskReader::loadRawMask(
     const std::string& filename, 
     int nx, int ny,
+    int clay_label,
     int water_label,
     int co2_label) {
     
@@ -199,12 +200,7 @@ IOUtils::MaskReader::MaskData IOUtils::MaskReader::loadRawMask(
     result.raw_labels = raw_data;
     result.active_cells.resize(nx * ny, 0);
     result.interface_cells.resize(nx * ny, 0);
-    
-    // Helper function to check if a cell is at the interface
-    auto isInterface = [&](int i, int j) {
-        if (i < 0 || i >= nx || j < 0 || j >= ny) return false;
-        return raw_data[i + j * nx] == water_label;
-    };
+    result.clay_cells.resize(nx * ny, 0);
     
     // Process the mask
     for (int j = 0; j < ny; j++) {
@@ -212,18 +208,24 @@ IOUtils::MaskReader::MaskData IOUtils::MaskReader::loadRawMask(
             int idx = i + j * nx;
             unsigned char val = raw_data[idx];
             
-            // Set active cells (water phase)
-            if (val == water_label) {
+            // Set active cells (both water and clay)
+            if (val == water_label || val == clay_label) {
                 result.active_cells[idx] = 1;
                 
-                // Check if this water cell is adjacent to a CO2 bubble
-                bool is_interface = false;
-                // Check neighboring cells (4-connectivity)
-                if ((i > 0 && raw_data[idx-1] == co2_label) ||
-                    (i < nx-1 && raw_data[idx+1] == co2_label) ||
-                    (j > 0 && raw_data[idx-nx] == co2_label) ||
-                    (j < ny-1 && raw_data[idx+nx] == co2_label)) {
-                    result.interface_cells[idx] = 1;
+                // Mark clay cells specifically
+                if (val == clay_label) {
+                    result.clay_cells[idx] = 1;
+                }
+                
+                // Check for water-CO2 interface only if it's a water cell
+                if (val == water_label) {
+                    // Check neighboring cells for CO2 (4-connectivity)
+                    if ((i > 0 && raw_data[idx-1] == co2_label) ||
+                        (i < nx-1 && raw_data[idx+1] == co2_label) ||
+                        (j > 0 && raw_data[idx-nx] == co2_label) ||
+                        (j < ny-1 && raw_data[idx+nx] == co2_label)) {
+                        result.interface_cells[idx] = 1;
+                    }
                 }
             }
         }

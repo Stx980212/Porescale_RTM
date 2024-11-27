@@ -96,7 +96,10 @@ public:
                   << "  Mass tolerance: " << params.mass_tol << std::endl;
     }
 
+    
     void initialize() {
+    /*
+    // Initializing the concentration field with Gaussian field
     // Get the mask from transport solver (add a getMask() method to TransportSolver2D first)
     const std::vector<int>& mask = transport_solver_.getMask();
  
@@ -133,32 +136,15 @@ public:
             concentrations_[(j * nx_ + i) * num_species_ + 2] = 0.0f;
         }
     }
+    */
+    std::fill(concentrations_.begin(), concentrations_.end(), 0.0f);
     
     // Save initial state
     writer_->writeTimestep(concentrations_, 0.0f);
     
     // Create XDMF file after first timestep is written
     writer_->createXDMF("reactive_transport.xmf");
-}
-
-    void setClayCells(const std::vector<int>& clay_cells) {
-        clay_cells_ = clay_cells;
-        
-        // Update transport properties for clay cells
-        std::vector<float> effective_diffusion = transport_solver_.getDiffusionCoefficients();
-        std::vector<float> modified_diffusion = effective_diffusion;
-        
-        // Modify diffusion coefficients in clay cells
-        for (int i = 0; i < nx_ * ny_; i++) {
-            if (clay_cells_[i]) {
-                // Apply clay porosity and tortuosity to diffusion coefficients
-                modified_diffusion[i] *= clay_porosity_ * clay_tortuosity_;
-            }
-        }
-
-        transport_solver_.setModifiedDiffusion(modified_diffusion);
     }
-
     
     void solve() {
         float current_time = 0.0f;
@@ -255,6 +241,43 @@ public:
 
     TransportSolver2D& getTransportSolver() { 
         return transport_solver_;             
+    }
+
+    void setModifiedDiffusion(const std::vector<float>& modified_diffusion) {
+        transport_solver_.setModifiedDiffusion(modified_diffusion);
+    }
+
+    std::vector<float> getDiffusionCoefficients() const {
+        return transport_solver_.getDiffusionCoefficients();
+    }
+
+    // Helper function to set up diffusion for clay and water regions
+    void setupDiffusionCoefficients(
+        const std::vector<int>& clay_cells,
+        const std::vector<int>& active_cells,
+        float water_diffusion = 2.0e-9,
+        float clay_porosity = 0.3,
+        float clay_tortuosity = 0.5) {
+        
+        std::vector<float> modified_diffusion(nx_ * ny_);
+        
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (!active_cells[i]) {
+                // Inactive cells (non-porous regions)
+                modified_diffusion[i] = 0.0f;
+            }
+            else if (clay_cells[i]) {
+                // Clay pores: Apply porosity and tortuosity factors
+                modified_diffusion[i] = water_diffusion * clay_porosity * clay_tortuosity;
+            }
+            else {
+                // Water pores: Use regular diffusion coefficient
+                modified_diffusion[i] = water_diffusion;
+            }
+        }
+        
+        // Set the modified diffusion coefficients in the transport solver
+        transport_solver_.setModifiedDiffusion(modified_diffusion);
     }
 
 private:
@@ -432,20 +455,24 @@ int main() {
     const float clay_tortuosity = 0.5f; // Typical clay tortuosity
 
     const std::string mask_file = "../Wallula_2810_pore1_final_slice73.raw";
+
+
     
     try {
         auto mask_data = IOUtils::MaskReader::loadRawMask(
-            mask_file, nx, ny, 1, 2  // water_label=1, co2_label=2
-        );
+        mask_file, nx, ny, 0, 1, 2);  // clay_label=0, water_label=1, co2_label=2
 
         // Create solver
         ReactiveTransportSolver solver(
             nx, ny, dx, dy, dt, total_time, num_species, Hs_co2,
             clay_porosity, clay_tortuosity);
+
+        std::vector<int> active_cells = mask_data.active_cells;
+        std::vector<float> modified_diffusion(nx * ny);
+        std::vector<int> clay_cells = mask_data.clay_cells;
         
         solver.getTransportSolver().setMask(mask_data.active_cells);
         solver.setInterfaceCells(mask_data.interface_cells);
-        solver.setClayCells(mask_data.clay_cells);
 
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
@@ -458,6 +485,12 @@ int main() {
         // Set physical parameters
         solver.setVelocityField(0.0f, 0.0f);
         solver.setDiffusionCoefficients(0.02f, 0.02f);
+        solver.setupDiffusionCoefficients(
+            clay_cells, active_cells,
+            2.0e-9,  // water diffusion coefficient
+            0.3,     // clay porosity
+            0.5      // clay tortuosity
+            );
         
         // Initialize and run
         solver.initialize();
