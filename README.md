@@ -28,10 +28,13 @@ Department of Earth and Environmental Engineering, Columbia University
 ## Definition
 ### Labels in mask file 
 basalt matrix: -1\
-nanoporous pore-lining clay: 0\
+nanoporous pore-lining clay: 0, with the assumption of a 0.3 porosity and a 0.5 torturosity\
 water (brine): 1\
 scCO2: 2\
 carbonate precipitants: 3
 
 ### Lables of chemical species in pore water (water and pore-lining clay)
-dissolveed CO2: 0
+dissolved CO2: 0
+
+### Boundary condition
+dissolved CO2: constant concentration boundary by Henry's law at water/scCO2 interface, closed boundary otherwise

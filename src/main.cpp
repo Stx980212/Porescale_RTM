@@ -166,7 +166,7 @@ public:
         float current_time = 0.0f;
         int step = 0;
         const int save_interval = 100;
-        const float MIN_DT = 1e-5f;  // minimum dt
+        const float MIN_DT = 5e-5f;  // minimum dt
         bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
@@ -391,28 +391,17 @@ private:
     
     float calculateTotalMass() const {
         float total_mass = 0.0f;
-        int invalid_count = 0;
-        
         for (size_t i = 0; i < nx_ * ny_; ++i) {
-            float cell_volume = dx_ * dy_;
-            if (clay_cells_[i]) {
-                cell_volume *= clay_porosity_;
-            }
+            float effective_volume = clay_cells_[i] ? 
+                dx_ * dy_ * clay_porosity_ : dx_ * dy_;
             
             for (int s = 0; s < num_species_; s++) {
                 float conc = concentrations_[i * num_species_ + s];
                 if (std::isfinite(conc)) {
-                    total_mass += conc * cell_volume;
-                } else {
-                    invalid_count++;
+                    total_mass += conc * effective_volume;
                 }
             }
         }
-        
-        if (invalid_count > 0) {
-            std::cout << "Warning: " << invalid_count << " invalid concentrations found in mass calculation" << std::endl;
-        }
-        
         return total_mass;
     }
 
@@ -501,29 +490,37 @@ private:
     }
 
     void applyBoundaryConditions() {
-    for (int i = 0; i < nx_ * ny_; i++) {
-        if (interface_cells_[i]) {
-            for (int s = 0; s < num_species_; s++) {
-                if (s == 0) {  // CO2
-                    int idx = i * num_species_ + s;
-                    float old_concentration = concentrations_[idx];
-                    concentrations_[idx] = co2_saturation_conc_;
-                    
-                    // Calculate effective volume
-                    float effective_volume = clay_cells_[i] ? 
-                        dx_ * dy_ * clay_porosity_ : dx_ * dy_;
-                    
-                    // Calculate mass change with effective volume
-                    float mass_change = (concentrations_[idx] - old_concentration) * effective_volume;
-                    
-                    // Store flux and accumulate mass
-                    interface_mass_flux_[idx] = mass_change / dt_;
-                    accumulated_interface_mass_ += mass_change;
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (interface_cells_[i]) {
+                for (int s = 0; s < num_species_; s++) {
+                    if (s == 0) {  // CO2
+                        int idx = i * num_species_ + s;
+                        float old_concentration = concentrations_[idx];
+                        
+                        // Store old mass before setting new concentration
+                        float effective_volume = clay_cells_[i] ? 
+                            dx_ * dy_ * clay_porosity_ : dx_ * dy_;
+                        float old_mass = old_concentration * effective_volume;
+                        
+                        // Set new concentration
+                        concentrations_[idx] = co2_saturation_conc_;
+                        
+                        // Calculate new mass
+                        float new_mass = co2_saturation_conc_ * effective_volume;
+                        
+                        // Calculate mass flux (positive means mass entering the system)
+                        float mass_flux = (new_mass - old_mass) / dt_;
+                        interface_mass_flux_[idx] = mass_flux;
+                        
+                        // Only accumulate positive mass flux (mass entering the system)
+                        if (mass_flux > 0) {
+                            accumulated_interface_mass_ += mass_flux * dt_;
+                        }
+                    }
                 }
             }
         }
     }
-}
 
     void applyClayProperties() {
         // Modify transport parameters in clay cells if needed
