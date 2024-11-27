@@ -338,13 +338,11 @@ private:
     bool checkConvergence(float current_time) {
         // Check mass conservation
         float total_mass = calculateTotalMass();
+        float expected_mass = initial_total_mass_ + accumulated_interface_mass_;
+        conv_status_.mass_error = std::abs(total_mass - expected_mass) / 
+                                (expected_mass + 1e-10);
         
-        // Check if the total CO2 inside the domain equals to 
-        conv_status_.mass_error = std::abs(accumulated_interface_mass_ - total_mass + initial_total_mass_) / accumulated_interface_mass_;
-        std::cout << "initial total mass:  " << initial_total_mass_ << std::endl;
-        std::cout << "total CO2 mass inside the domain: " << total_mass << std::endl;
-        std::cout << "Mass error (including interface flux): " << conv_status_.mass_error << std::endl;
-        std::cout << "Accumulated interface mass flux: " << accumulated_interface_mass_ << std::endl;
+        validateMassConservation();  // Add detailed mass conservation info
         
         if (conv_status_.mass_error > conv_params_.mass_tol) {
             conv_status_.divergence_reason = "Mass conservation violated";
@@ -503,32 +501,29 @@ private:
     }
 
     void applyBoundaryConditions() {
-        // Calculate and store mass changes from interface condition
-        for (int i = 0; i < nx_ * ny_; i++) {
-            if (interface_cells_[i]) {
-                for (int s = 0; s < num_species_; s++) {
+    for (int i = 0; i < nx_ * ny_; i++) {
+        if (interface_cells_[i]) {
+            for (int s = 0; s < num_species_; s++) {
+                if (s == 0) {  // CO2
                     int idx = i * num_species_ + s;
                     float old_concentration = concentrations_[idx];
+                    concentrations_[idx] = co2_saturation_conc_;
                     
-                    // Apply boundary condition (only for CO2 - species 0)
-                    if (s == 0) {
-                        concentrations_[idx] = co2_saturation_conc_;
-                        
-                        // Calculate mass change
-                        float mass_change = (concentrations_[idx] - old_concentration) * dx_ * dy_;
-                        if (!clay_cells_[i]) {
-                            interface_mass_flux_[idx] = mass_change / dt_; // Store flux
-                            accumulated_interface_mass_ += mass_change;     // Accumulate total mass change
-                        } else {
-                            // For clay cells, account for porosity
-                            interface_mass_flux_[idx] = mass_change * clay_porosity_ / dt_;
-                            accumulated_interface_mass_ += mass_change * clay_porosity_;
-                        }
-                    }
+                    // Calculate effective volume
+                    float effective_volume = clay_cells_[i] ? 
+                        dx_ * dy_ * clay_porosity_ : dx_ * dy_;
+                    
+                    // Calculate mass change with effective volume
+                    float mass_change = (concentrations_[idx] - old_concentration) * effective_volume;
+                    
+                    // Store flux and accumulate mass
+                    interface_mass_flux_[idx] = mass_change / dt_;
+                    accumulated_interface_mass_ += mass_change;
                 }
             }
         }
     }
+}
 
     void applyClayProperties() {
         // Modify transport parameters in clay cells if needed
@@ -545,7 +540,48 @@ private:
             }
         }
     }
+
+    void validateMassConservation() {
+    float total_mass = calculateTotalMass();
+    float expected_mass = initial_total_mass_ + accumulated_interface_mass_;
+    float absolute_error = std::abs(total_mass - expected_mass);
+    float relative_error = absolute_error / (expected_mass + 1e-10);
+    
+    std::cout << "\nMass Conservation Details:" << std::endl;
+    std::cout << "Initial mass: " << initial_total_mass_ << std::endl;
+    std::cout << "Current total mass: " << total_mass << std::endl;
+    std::cout << "Accumulated interface mass: " << accumulated_interface_mass_ << std::endl;
+    std::cout << "Expected mass: " << expected_mass << std::endl;
+    std::cout << "Absolute error: " << absolute_error << std::endl;
+    std::cout << "Relative error: " << relative_error << std::endl;
+    
+    // Print interface flux details
+    float interface_water_flux = 0.0f;
+    float interface_clay_flux = 0.0f;
+    int water_interface_cells = 0;
+    int clay_interface_cells = 0;
+    
+    for (int i = 0; i < nx_ * ny_; i++) {
+        if (interface_cells_[i]) {
+            if (clay_cells_[i]) {
+                interface_clay_flux += interface_mass_flux_[i * num_species_];
+                clay_interface_cells++;
+            } else {
+                interface_water_flux += interface_mass_flux_[i * num_species_];
+                water_interface_cells++;
+            }
+        }
+    }
+    
+    std::cout << "\nInterface Details:" << std::endl;
+    std::cout << "Water interface flux: " << interface_water_flux 
+              << " (cells: " << water_interface_cells << ")" << std::endl;
+    std::cout << "Clay interface flux: " << interface_clay_flux 
+              << " (cells: " << clay_interface_cells << ")" << std::endl;
+}
 };
+
+
 
 int main() {
     // Simulation parameters
