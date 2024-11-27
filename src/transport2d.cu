@@ -49,7 +49,7 @@ __global__ void calculateFluxesKernel(
                 // Average diffusion coefficients of adjacent cells
                 float diff_L = modified_diffusion[j * nx + i-1];
                 float diff_R = modified_diffusion[j * nx + i];
-                diff_coef = 0.5f * (diff_L + diff_R);
+                diff_coef = 2.0f * (diff_L * diff_R) / (diff_L + diff_R + 1e-20f);
             } else {
                 diff_coef = diffusion.x;
             }
@@ -84,7 +84,7 @@ __global__ void calculateFluxesKernel(
                 // Average diffusion coefficients of adjacent cells
                 float diff_B = modified_diffusion[(j-1) * nx + i];
                 float diff_T = modified_diffusion[j * nx + i];
-                diff_coef = 0.5f * (diff_B + diff_T);
+                diff_coef = 2.0f * (diff_B * diff_T) / (diff_B + diff_T + 1e-20f);
             } else {
                 diff_coef = diffusion.y;
             }
@@ -108,7 +108,7 @@ __global__ void updateConcentrationsKernel(
     float dt,
     int num_species
 ) {
-    const float UNDER_RELAX = 0.8f;
+    const float UNDER_RELAX = 0.5f;
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -284,7 +284,7 @@ void TransportSolver2D::checkCFLCondition() {
     float diff_cfl = (diffusion_.x/(dx_*dx_) + diffusion_.y/(dy_*dy_)) * dt_;
     float adv_cfl = max_velocity * dt_ / fmin(dx_, dy_);
     
-    if (diff_cfl > 0.5 || adv_cfl > 1.0) {
+    if (diff_cfl > 0.25 || adv_cfl > 1.0) {  // Changed from 0.5 to 0.25 for diffusion
         std::cerr << "Warning: CFL condition might be violated\n"
                   << "Diffusive CFL: " << diff_cfl << "\n"
                   << "Advective CFL: " << adv_cfl << std::endl;

@@ -150,7 +150,7 @@ public:
         float current_time = 0.0f;
         int step = 0;
         const int save_interval = 100;
-        const float MIN_DT = 1e-5f;  // minimum dt
+        const float MIN_DT = 5e-5f;  // minimum dt
         bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
@@ -227,7 +227,7 @@ public:
         transport_solver_.setVelocity(vx, vy);
     }
     
-    void setDiffusionCoefficients(float dx, float dy) {
+    void setUniformDiffusionCoefficients(float dx, float dy) {
         transport_solver_.setDiffusion(dx, dy);
     }
 
@@ -484,10 +484,10 @@ int main() {
         
         // Set physical parameters
         solver.setVelocityField(0.0f, 0.0f);
-        solver.setDiffusionCoefficients(0.02f, 0.02f);
+        //solver.setUniformDiffusionCoefficients(0.02f, 0.02f);
         solver.setupDiffusionCoefficients(
             clay_cells, active_cells,
-            2.0e-9,  // water diffusion coefficient
+            4.0e-2,  // water diffusion coefficient
             0.3,     // clay porosity
             0.5      // clay tortuosity
             );
