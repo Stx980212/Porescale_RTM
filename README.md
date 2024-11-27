@@ -17,19 +17,19 @@ Department of Earth and Environmental Engineering, Columbia University
 ├── scripts\
 │   ├── build.sh                // Build executable with cmake\
 │   └── delete_build_run.sh     // Re-build with cmake and run simulation\ 
-├── src
+├── src\
 │   ├── io_utils.cpp\
 │   ├── main.cpp                // Main program entry point\
 │   ├── reactions2d.cu          // CUDA kernels for geochemical reactions\
 │   └── transport2d.cu          // CUDA kernels for transport processes\
 ├── Wallula_2810_pore1_final_slice73.raw    // Raw geometry mask file\
-└── Wallula_2810_pore1_final_slice73.tif    // Visualized geometry\
+└── Wallula_2810_pore1_final_slice73.tif    // Visualized geometry
 
 ## Definition
 ### Labels in mask file 
-basalt matrix: -1
-pore-lining clay: 0
-water (brine): 1
-scCO2: 2
+basalt matrix: -1\
+pore-lining clay: 0\
+water (brine): 1\
+scCO2: 2\
 carbonate precipitants: 3
 
