@@ -170,6 +170,8 @@ TransportSolver2D::TransportSolver2D(
 
     // Allocate memory for cell volumes
     checkCudaErrors(cudaMalloc(&d_cell_volumes_, nx * ny * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_porosity_, nx_ * ny_ * sizeof(float)));
+
     
     // Initialize with unit volumes
     std::vector<float> unit_volumes(nx * ny, 1.0f);
@@ -194,6 +196,10 @@ TransportSolver2D::~TransportSolver2D() {
     }
     if (d_cell_volumes_) {
         checkCudaErrors(cudaFree(d_cell_volumes_));
+    }
+    if (d_porosity_) {
+        cudaFree(d_porosity_);
+        d_porosity_ = nullptr;
     }
 }
 
@@ -237,12 +243,29 @@ void TransportSolver2D::setCellVolumes(const std::vector<float>& volumes) {
                               cudaMemcpyHostToDevice));
 }
 
+void TransportSolver2D::setPorosity(const std::vector<float>& porosity) {
+    if (porosity.size() != nx_ * ny_) {
+        throw std::runtime_error("Porosity vector size mismatch");
+    }
+    checkCudaErrors(cudaMemcpy(d_porosity_, porosity.data(),
+                              nx_ * ny_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
+}
+
 std::vector<float> TransportSolver2D::getCellVolumes() const {
     std::vector<float> host_volumes(nx_ * ny_);
     checkCudaErrors(cudaMemcpy(host_volumes.data(), d_cell_volumes_,
                               nx_ * ny_ * sizeof(float),
                               cudaMemcpyDeviceToHost));
     return host_volumes;
+}
+
+std::vector<float> TransportSolver2D::getPorosity() const {
+    std::vector<float> host_porosity(nx_ * ny_);
+    checkCudaErrors(cudaMemcpy(host_porosity.data(), d_porosity_,
+                              nx_ * ny_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+    return host_porosity;
 }
 
 float TransportSolver2D::getTotalMass() const {
@@ -275,7 +298,7 @@ void TransportSolver2D::solve(std::vector<float>& concentrations) {
     // Set up grid and block dimensions
     dim3 block_size(16, 16);
     dim3 num_blocks_fluxes(
-        (nx_ + 2 + block_size.x - 1) / block_size.x,
+        (nx_ + 1 + block_size.x - 1) / block_size.x,
         (ny_ + 1 + block_size.y - 1) / block_size.y
     );
     dim3 num_blocks_update(

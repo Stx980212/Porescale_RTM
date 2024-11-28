@@ -19,6 +19,8 @@ public:
     void setModifiedDiffusion(const std::vector<float>& modified_diffusion);
     std::vector<int> getMask() const;
     std::vector<float> getCellVolumes() const;
+    std::vector<float> getPorosity() const;
+    void setPorosity(const std::vector<float>& porosity);
 
     void setInterfaceConcentration(float co2_interface_conc) {
         interface_concentration_ = co2_interface_conc;
@@ -43,4 +45,5 @@ private:
 
     float interface_concentration_; // Concentration at scCO2-water interface
     float* d_interface_flux_;      // Store interface flux for each cell
+    float* d_porosity_;
 };

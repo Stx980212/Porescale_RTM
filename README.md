@@ -1,6 +1,6 @@
 # Pore-scale RTM
-CUDA-based 2D finite-volume pore-scale reactive transport simulation
-Tianxiao Shen, Shaina Kelly*
+CUDA-based 2D finite-volume pore-scale reactive transport simulation\
+Tianxiao Shen, Shaina Kelly* \
 Department of Earth and Environmental Engineering, Columbia University
 
 ## Project structure tree

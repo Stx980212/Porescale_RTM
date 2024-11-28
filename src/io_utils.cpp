@@ -11,6 +11,9 @@ IOUtils::HDF5Writer::HDF5Writer(
     float dx, float dy)
     : nx_(nx), ny_(ny), num_species_(num_species), dx_(dx), dy_(dy),
       timestep_(0), filename_(filename) {
+
+    cell_volumes_.resize(nx * ny);
+    porosity_.resize(nx * ny);
     
     try {
         // Create HDF5 file
@@ -59,24 +62,47 @@ IOUtils::HDF5Writer::~HDF5Writer() {
     }
 }
 
-void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations, float time) {
+void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations,
+                                       const std::vector<float>& cell_volumes_,
+                                       const std::vector<float>& porosity_,
+                                       float time) {
     try {
         std::stringstream ss;
+        
+        // Write concentrations as before
+        ss.str("");
         ss << "concentrations_" << std::setw(6) << std::setfill('0') << timestep_;
+        H5::DataSet conc_dataset = file_.createDataSet(ss.str(),
+                                                      H5::PredType::NATIVE_FLOAT,
+                                                      dataspace_);
+        conc_dataset.write(concentrations.data(), H5::PredType::NATIVE_FLOAT);
         
-        H5::DataSet dataset = file_.createDataSet(ss.str(),
-                                                H5::PredType::NATIVE_FLOAT,
-                                                dataspace_);
-        
-        // Write the data
-        dataset.write(concentrations.data(), H5::PredType::NATIVE_FLOAT);
-        
-        // Add time attribute
+        // Add time attribute to concentrations
         H5::DataSpace attr_space(H5S_SCALAR);
-        H5::Attribute attr = dataset.createAttribute("time",
-                                                   H5::PredType::NATIVE_FLOAT,
-                                                   attr_space);
+        H5::Attribute attr = conc_dataset.createAttribute("time",
+                                                        H5::PredType::NATIVE_FLOAT,
+                                                        attr_space);
         attr.write(H5::PredType::NATIVE_FLOAT, &time);
+        
+        // Create dataspace for 2D scalar fields (cell_volumes and porosity)
+        hsize_t dims[2] = {static_cast<hsize_t>(nx_), static_cast<hsize_t>(ny_)};
+        H5::DataSpace scalar_space(2, dims);
+        
+        // Write cell volumes
+        ss.str("");
+        ss << "cell_volumes_" << std::setw(6) << std::setfill('0') << timestep_;
+        H5::DataSet vol_dataset = file_.createDataSet(ss.str(),
+                                                     H5::PredType::NATIVE_FLOAT,
+                                                     scalar_space);
+        vol_dataset.write(cell_volumes_.data(), H5::PredType::NATIVE_FLOAT);
+        
+        // Write porosity
+        ss.str("");
+        ss << "porosity_" << std::setw(6) << std::setfill('0') << timestep_;
+        H5::DataSet por_dataset = file_.createDataSet(ss.str(),
+                                                     H5::PredType::NATIVE_FLOAT,
+                                                     scalar_space);
+        por_dataset.write(porosity_.data(), H5::PredType::NATIVE_FLOAT);
         
         times_.push_back(time);
         timestep_++;
@@ -134,6 +160,24 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
                  << "          </DataItem>\n"
                  << "        </Attribute>\n";
         }
+
+        // Add cell volumes
+        xdmf << "        <Attribute Name=\"CellVolumes\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
+             << "          <DataItem Dimensions=\"" << nx_ << " " << ny_ 
+             << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
+             << "            " << filename_ << ":/cell_volumes_"
+             << std::setw(6) << std::setfill('0') << i << "\n"
+             << "          </DataItem>\n"
+             << "        </Attribute>\n";
+        
+        // Add porosity
+        xdmf << "        <Attribute Name=\"Porosity\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
+             << "          <DataItem Dimensions=\"" << nx_ << " " << ny_ 
+             << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
+             << "            " << filename_ << ":/porosity_"
+             << std::setw(6) << std::setfill('0') << i << "\n"
+             << "          </DataItem>\n"
+             << "        </Attribute>\n";
         
         xdmf << "      </Grid>\n";
     }

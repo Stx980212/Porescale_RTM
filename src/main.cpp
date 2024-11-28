@@ -63,13 +63,17 @@ public:
     ): nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), initial_dt_(dt),
         total_time_(total_time), num_species_(num_species),
         transport_solver_(nx, ny, dx, dy, dt, num_species),
-        Hs_co2_(Hs_co2) {
+        Hs_co2_(Hs_co2),
+        clay_porosity_(clay_porosity),
+        clay_tortuosity_(clay_tortuosity) {
         
         // Initialize concentrations
         concentrations_.resize(nx * ny * num_species);
         previous_concentrations_.resize(nx * ny * num_species);
         interface_cells_.resize(nx * ny, 0);
         clay_cells_.resize(nx * ny, 0);
+        cell_volumes_.resize(nx * ny);
+        porosity_.resize(nx * ny);
 
         const float P_co2 = 1.0f; // Partial pressure of CO2 in atmospheres
         co2_saturation_conc_ = Hs_co2_ * P_co2;
@@ -153,10 +157,14 @@ public:
         }
     }
     */
+   // Get the current cell volumes from transport solver
+    porosity_ = transport_solver_.getPorosity();
+    cell_volumes_ = transport_solver_.getCellVolumes();
+
     std::fill(concentrations_.begin(), concentrations_.end(), 0.0f);
     
     // Save initial state
-    writer_->writeTimestep(concentrations_, 0.0f);
+    writer_->writeTimestep(concentrations_, cell_volumes_, porosity_, 0.0f);
     
     // Create XDMF file after first timestep is written
     writer_->createXDMF("reactive_transport.xmf");
@@ -167,6 +175,7 @@ public:
         int step = 0;
         const int save_interval = 100;
         const float MIN_DT = 5e-5f;  // minimum dt
+        const float MAX_DT = 5e-5f;  // minimum dt
         bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
@@ -179,18 +188,19 @@ public:
         while (current_time < total_time_) {
             // Apply boundary conditions before transport step
             applyBoundaryConditions();  // Apply boundary conditions
-            applyClayProperties();      // Apply clay properties to transport
             std::cout << "Current time: " << current_time << ", Step: " << step << std::endl;
             conv_status_ = ConvergenceStatus();
             
             // Store pre-step state
             //std::cout << "Before transport_solver_.solve" << std::endl;
             std::vector<float> pre_step_concentrations = concentrations_;
+
             //std::cout << "After transport_solver_.solve" << std::endl;
             
             // Iterative solution for current timestep
             while (conv_status_.iterations < conv_params_.max_iterations) {
                 // Transport step
+                checkConvergence(current_time);
                 transport_solver_.solve(concentrations_);
                 flag = checkConvergence(current_time);
                 
@@ -198,6 +208,7 @@ public:
                 if (conv_status_.converged) {
                     std::cout << "Converged at iteration: " << conv_status_.iterations << std::endl;
                     dt_ *= 2.0f;
+                    dt_ = std::min(dt_,MAX_DT);
                     break;
                 }
 
@@ -222,7 +233,9 @@ public:
             
             // Save and print results periodically
             if (step % save_interval == 0) {
-                writer_->writeTimestep(concentrations_, current_time);
+                porosity_ = transport_solver_.getPorosity();
+                cell_volumes_ = transport_solver_.getCellVolumes();
+                writer_->writeTimestep(concentrations_, cell_volumes_, porosity_, current_time);
                 printStats(current_time);
                 printConvergenceInfo();
                 
@@ -300,6 +313,20 @@ public:
         transport_solver_.setModifiedDiffusion(modified_diffusion);
     }
 
+    void updatePorosity() {
+        for (int i = 0; i < nx_ * ny_; i++) {
+            if (clay_cells_[i]) {
+                // Update porosity based on your porosity evolution model
+                // This is just a placeholder - implement your actual porosity update logic
+                porosity_[i] = clay_porosity_;  // or your updated value
+            }
+        }
+    }
+
+    void setPorosity(const std::vector<float>& porosity) {
+        transport_solver_.setPorosity(porosity);
+    }
+
 private:
     // Grid parameters
     int nx_, ny_;
@@ -319,6 +346,9 @@ private:
 
     float accumulated_interface_mass_; // Track total mass flux at interfaces
     std::vector<float> interface_mass_flux_; // Track mass flux at each interface cell
+
+    std::vector<float> cell_volumes_;
+    std::vector<float> porosity_;
 
     // Solvers and data
     TransportSolver2D transport_solver_;
@@ -392,11 +422,10 @@ private:
     float calculateTotalMass() const {
         float total_mass = 0.0f;
         for (size_t i = 0; i < nx_ * ny_; ++i) {
-            float effective_volume = clay_cells_[i] ? 
-                dx_ * dy_ * clay_porosity_ : dx_ * dy_;
+            float effective_volume = dx_ * dy_ * porosity_[i];
             
             for (int s = 0; s < num_species_; s++) {
-                float conc = concentrations_[i * num_species_ + s];
+                double conc = concentrations_[i * num_species_ + s];
                 if (std::isfinite(conc)) {
                     total_mass += conc * effective_volume;
                 }
@@ -497,9 +526,8 @@ private:
                         int idx = i * num_species_ + s;
                         float old_concentration = concentrations_[idx];
                         
-                        // Store old mass before setting new concentration
-                        float effective_volume = clay_cells_[i] ? 
-                            dx_ * dy_ * clay_porosity_ : dx_ * dy_;
+                        // Use porosity vector instead of clay_cells check
+                        float effective_volume = dx_ * dy_ * porosity_[i];
                         float old_mass = old_concentration * effective_volume;
                         
                         // Set new concentration
@@ -508,11 +536,10 @@ private:
                         // Calculate new mass
                         float new_mass = co2_saturation_conc_ * effective_volume;
                         
-                        // Calculate mass flux (positive means mass entering the system)
+                        // Calculate mass flux
                         float mass_flux = (new_mass - old_mass) / dt_;
                         interface_mass_flux_[idx] = mass_flux;
                         
-                        // Only accumulate positive mass flux (mass entering the system)
                         if (mass_flux > 0) {
                             accumulated_interface_mass_ += mass_flux * dt_;
                         }
@@ -520,23 +547,7 @@ private:
                 }
             }
         }
-    }
-
-    void applyClayProperties() {
-        // Modify transport parameters in clay cells if needed
-        // This could include adjusting diffusion coefficients, reaction rates, etc.
-        for (int i = 0; i < nx_ * ny_; i++) {
-            if (clay_cells_[i]) {
-                // Apply clay-specific modifications to transport/reaction parameters
-                // For example, different reaction rates in clay vs water
-                for (int s = 0; s < num_species_; s++) {
-                    int idx = i * num_species_ + s;
-                    // Apply clay porosity to concentrations if needed
-                    concentrations_[idx] *= clay_porosity_;
-                }
-            }
-        }
-    }
+    }   
 
     void validateMassConservation() {
     float total_mass = calculateTotalMass();
@@ -596,8 +607,6 @@ int main() {
 
     const std::string mask_file = "../Wallula_2810_pore1_final_slice73.raw";
 
-
-    
     try {
         auto mask_data = IOUtils::MaskReader::loadRawMask(
         mask_file, nx, ny, 0, 1, 2);  // clay_label=0, water_label=1, co2_label=2
@@ -611,19 +620,26 @@ int main() {
         std::vector<float> modified_diffusion(nx * ny);
         std::vector<int> clay_cells = mask_data.clay_cells;
         std::vector<float> cell_volumes(nx * ny);
+        std::vector<float> porosity(nx * ny);
 
         for (int i = 0; i < nx * ny; ++i) {
-            if (clay_cells[i]==1) {
-                cell_volumes[i] = clay_porosity * dx * dy;  // Apply clay porosity
+            if (!active_cells[i]) {
+                cell_volumes[i] = 0.0f;
+                porosity[i] = 0.0f;
+            } else if (clay_cells[i]) {
+                cell_volumes[i] = dx * dy * clay_porosity;
+                porosity[i] = clay_porosity;
             } else {
-                cell_volumes[i] = dx * dy;  // Full volume for water phase
+                cell_volumes[i] = dx * dy;
+                porosity[i] = 1.0f;
             }
         }
         
         solver.getTransportSolver().setMask(mask_data.active_cells);
         solver.setInterfaceCells(mask_data.interface_cells);
         solver.setCellVolumes(cell_volumes);
-
+        solver.setPorosity(porosity);  
+        
         // Set convergence parameters
         ReactiveTransportSolver::ConvergenceParams conv_params;
         conv_params.relative_tol = 1e-4f;

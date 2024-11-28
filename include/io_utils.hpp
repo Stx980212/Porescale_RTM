@@ -32,7 +32,10 @@ public:
     
     ~HDF5Writer();
     
-    void writeTimestep(const std::vector<float>& concentrations, float time);
+    void writeTimestep(const std::vector<float>& concentrations, 
+                      const std::vector<float>& cell_volumes,
+                      const std::vector<float>& porosity,
+                      float time);
     void createXDMF(const std::string& xdmf_filename);
     void writeMask(const std::vector<int>& mask, const std::string& name);
     
@@ -42,6 +45,8 @@ private:
     float dx_, dy_;
     int timestep_;
     std::vector<float> times_;
+    std::vector<float> cell_volumes_;  
+    std::vector<float> porosity_;     
     H5::H5File file_;
     H5::DataSpace dataspace_;
 };
