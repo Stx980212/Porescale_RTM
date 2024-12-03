@@ -28,25 +28,25 @@ public:
     HDF5Writer(const std::string& filename, 
                int nx, int ny, 
                int num_species,
-               float dx, float dy);  // Just declare the constructor
+               double dx, double dy);  // Just declare the constructor
     
     ~HDF5Writer();
     
-    void writeTimestep(const std::vector<float>& concentrations, 
-                      const std::vector<float>& cell_volumes,
-                      const std::vector<float>& porosity,
-                      float time);
+    void writeTimestep(const std::vector<double>& concentrations, 
+                      const std::vector<double>& cell_volumes,
+                      const std::vector<double>& porosity,
+                      double time);
     void createXDMF(const std::string& xdmf_filename);
     void writeMask(const std::vector<int>& mask, const std::string& name);
     
 private:
     std::string filename_;
     int nx_, ny_, num_species_;
-    float dx_, dy_;
+    double dx_, dy_;
     int timestep_;
-    std::vector<float> times_;
-    std::vector<float> cell_volumes_;  
-    std::vector<float> porosity_;     
+    std::vector<double> times_;
+    std::vector<double> cell_volumes_;  
+    std::vector<double> porosity_;     
     H5::H5File file_;
     H5::DataSpace dataspace_;
 };

@@ -2,9 +2,9 @@
 #include <cuda_runtime.h>
 
 struct ReactionParameters {
-    float k_forward;
-    float k_backward;
-    float equilibrium_K;
+    double k_forward;
+    double k_backward;
+    double equilibrium_K;
 };
 
 enum class ReactionType {
@@ -14,9 +14,9 @@ enum class ReactionType {
 };
 
 __global__ void computeReactions2D(
-    float* concentrations,
+    double* concentrations,
     int nx, int ny,
-    float dt,
+    double dt,
     int num_species,
     ReactionParameters params
 );

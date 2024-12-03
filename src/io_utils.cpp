@@ -8,7 +8,7 @@
 
 IOUtils::HDF5Writer::HDF5Writer(
     const std::string& filename, int nx, int ny, int num_species,
-    float dx, float dy)
+    double dx, double dy)
     : nx_(nx), ny_(ny), num_species_(num_species), dx_(dx), dy_(dy),
       timestep_(0), filename_(filename) {
 
@@ -33,12 +33,12 @@ IOUtils::HDF5Writer::HDF5Writer(
         
         // Add cell size information
         H5::Attribute dx_attr = mesh_info.createAttribute("dx", 
-            H5::PredType::NATIVE_FLOAT, scalar_space);
-        dx_attr.write(H5::PredType::NATIVE_FLOAT, &dx_);
+            H5::PredType::NATIVE_DOUBLE, scalar_space);
+        dx_attr.write(H5::PredType::NATIVE_DOUBLE, &dx_);
         
         H5::Attribute dy_attr = mesh_info.createAttribute("dy", 
-            H5::PredType::NATIVE_FLOAT, scalar_space);
-        dy_attr.write(H5::PredType::NATIVE_FLOAT, &dy_);
+            H5::PredType::NATIVE_DOUBLE, scalar_space);
+        dy_attr.write(H5::PredType::NATIVE_DOUBLE, &dy_);
         
         // Add mesh type attribute
         H5::StrType str_type(H5::PredType::C_S1, 256);
@@ -62,10 +62,10 @@ IOUtils::HDF5Writer::~HDF5Writer() {
     }
 }
 
-void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations,
-                                       const std::vector<float>& cell_volumes_,
-                                       const std::vector<float>& porosity_,
-                                       float time) {
+void IOUtils::HDF5Writer::writeTimestep(const std::vector<double>& concentrations,
+                                       const std::vector<double>& cell_volumes_,
+                                       const std::vector<double>& porosity_,
+                                       double time) {
     try {
         std::stringstream ss;
         
@@ -73,16 +73,16 @@ void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations
         ss.str("");
         ss << "concentrations_" << std::setw(6) << std::setfill('0') << timestep_;
         H5::DataSet conc_dataset = file_.createDataSet(ss.str(),
-                                                      H5::PredType::NATIVE_FLOAT,
+                                                      H5::PredType::NATIVE_DOUBLE,
                                                       dataspace_);
-        conc_dataset.write(concentrations.data(), H5::PredType::NATIVE_FLOAT);
+        conc_dataset.write(concentrations.data(), H5::PredType::NATIVE_DOUBLE);
         
         // Add time attribute to concentrations
         H5::DataSpace attr_space(H5S_SCALAR);
         H5::Attribute attr = conc_dataset.createAttribute("time",
-                                                        H5::PredType::NATIVE_FLOAT,
+                                                        H5::PredType::NATIVE_DOUBLE,
                                                         attr_space);
-        attr.write(H5::PredType::NATIVE_FLOAT, &time);
+        attr.write(H5::PredType::NATIVE_DOUBLE, &time);
         
         // Create dataspace for 2D scalar fields (cell_volumes and porosity)
         hsize_t dims[2] = {static_cast<hsize_t>(nx_), static_cast<hsize_t>(ny_)};
@@ -92,17 +92,17 @@ void IOUtils::HDF5Writer::writeTimestep(const std::vector<float>& concentrations
         ss.str("");
         ss << "cell_volumes_" << std::setw(6) << std::setfill('0') << timestep_;
         H5::DataSet vol_dataset = file_.createDataSet(ss.str(),
-                                                     H5::PredType::NATIVE_FLOAT,
+                                                     H5::PredType::NATIVE_DOUBLE,
                                                      scalar_space);
-        vol_dataset.write(cell_volumes_.data(), H5::PredType::NATIVE_FLOAT);
+        vol_dataset.write(cell_volumes_.data(), H5::PredType::NATIVE_DOUBLE);
         
         // Write porosity
         ss.str("");
         ss << "porosity_" << std::setw(6) << std::setfill('0') << timestep_;
         H5::DataSet por_dataset = file_.createDataSet(ss.str(),
-                                                     H5::PredType::NATIVE_FLOAT,
+                                                     H5::PredType::NATIVE_DOUBLE,
                                                      scalar_space);
-        por_dataset.write(porosity_.data(), H5::PredType::NATIVE_FLOAT);
+        por_dataset.write(porosity_.data(), H5::PredType::NATIVE_DOUBLE);
         
         times_.push_back(time);
         timestep_++;
@@ -132,10 +132,10 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
              << "        <Topology TopologyType=\"3DRectMesh\" "
              << "Dimensions=\"" << nx_+1 << " " << ny_+1 << " 2\"/>\n"
              << "        <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n"
-             << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
+             << "          <DataItem Dimensions=\"3\" NumberType=\"Double\" Format=\"XML\">\n"
              << "            0.0 0.0 0.0\n"
              << "          </DataItem>\n"
-             << "          <DataItem Dimensions=\"3\" NumberType=\"Float\" Format=\"XML\">\n"
+             << "          <DataItem Dimensions=\"3\" NumberType=\"Double\" Format=\"XML\">\n"
              << "            " << dx_ << " " << dy_ << " " << dx_ << "\n"
              << "          </DataItem>\n"
              << "        </Geometry>\n";
@@ -153,7 +153,7 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
                  << "            </DataItem>\n"
                  // This matches our HDF5 data structure exactly
                  << "            <DataItem Dimensions=\"" << nx_ << " " << ny_ 
-                 << " 1 " << num_species_ << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
+                 << " 1 " << num_species_ << "\" NumberType=\"Double\" Format=\"HDF5\">\n"
                  << "              " << filename_ << ":/concentrations_"
                  << std::setw(6) << std::setfill('0') << i << "\n"
                  << "            </DataItem>\n"
@@ -164,7 +164,7 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
         // Add cell volumes
         xdmf << "        <Attribute Name=\"CellVolumes\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
              << "          <DataItem Dimensions=\"" << nx_ << " " << ny_ 
-             << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
+             << "\" NumberType=\"Double\" Format=\"HDF5\">\n"
              << "            " << filename_ << ":/cell_volumes_"
              << std::setw(6) << std::setfill('0') << i << "\n"
              << "          </DataItem>\n"
@@ -173,7 +173,7 @@ void IOUtils::HDF5Writer::createXDMF(const std::string& xdmf_filename) {
         // Add porosity
         xdmf << "        <Attribute Name=\"Porosity\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
              << "          <DataItem Dimensions=\"" << nx_ << " " << ny_ 
-             << "\" NumberType=\"Float\" Format=\"HDF5\">\n"
+             << "\" NumberType=\"Double\" Format=\"HDF5\">\n"
              << "            " << filename_ << ":/porosity_"
              << std::setw(6) << std::setfill('0') << i << "\n"
              << "          </DataItem>\n"

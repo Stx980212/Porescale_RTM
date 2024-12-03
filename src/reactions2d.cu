@@ -4,19 +4,19 @@
 #include <iostream>
 
 __device__ void computeReactionRates(
-    float* rates,
-    const float* concentrations,
+    double* rates,
+    const double* concentrations,
     ReactionType reaction_type,
     const ReactionParameters& params
 ) {
-    float cA = concentrations[0];  // Species A concentration
-    float cB = concentrations[1];  // Species B concentration
-    float cC = concentrations[2];  // Species C concentration
+    double cA = concentrations[0];  // Species A concentration
+    double cB = concentrations[1];  // Species B concentration
+    double cC = concentrations[2];  // Species C concentration
 
-    float forward_rate = 0.0f;
-    float backward_rate = 0.0f;
-    float deviation = 0.0f;
-    float relaxation_rate = 0.0f;
+    double forward_rate = 0.0f;
+    double backward_rate = 0.0f;
+    double deviation = 0.0f;
+    double relaxation_rate = 0.0f;
     
     switch(reaction_type) {
         case ReactionType::A_PLUS_B_TO_C:
@@ -49,10 +49,10 @@ __device__ void computeReactionRates(
 }
 
 __global__ void computeReactions2D(
-    float* concentrations,
+    double* concentrations,
     int nx,
     int ny,
-    float dt,
+    double dt,
     int num_species,
     ReactionType reaction_type,
     ReactionParameters params
@@ -66,8 +66,8 @@ __global__ void computeReactions2D(
     int idx = (j * nx + i) * num_species;
     
     // Local array for species concentrations
-    float local_conc[3];
-    float reaction_rates[3];
+    double local_conc[3];
+    double reaction_rates[3];
     
     // Load concentrations
     for (int s = 0; s < num_species; s++) {
@@ -79,7 +79,7 @@ __global__ void computeReactions2D(
     
     // Update concentrations using semi-implicit scheme
     for (int s = 0; s < num_species; s++) {
-        float new_conc = local_conc[s] + dt * reaction_rates[s];
+        double new_conc = local_conc[s] + dt * reaction_rates[s];
         
         // Ensure positivity
         new_conc = fmaxf(0.0f, new_conc);

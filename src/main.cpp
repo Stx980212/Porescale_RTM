@@ -11,10 +11,10 @@
 class ReactiveTransportSolver {
 public:
     struct ConvergenceParams {
-        float relative_tol;     // Relative tolerance for convergence
-        float absolute_tol;     // Absolute tolerance for convergence
+        double relative_tol;     // Relative tolerance for convergence
+        double absolute_tol;     // Absolute tolerance for convergence
         int max_iterations;     // Maximum iterations per timestep
-        float mass_tol;         // Tolerance for mass conservation
+        double mass_tol;         // Tolerance for mass conservation
         
         ConvergenceParams()
             : relative_tol(1e-5f)
@@ -26,8 +26,8 @@ public:
     
     struct ConvergenceStatus {
         bool converged;
-        float max_residual;
-        float mass_error;
+        double max_residual;
+        double mass_error;
         int iterations;
         std::string divergence_reason;
         
@@ -40,8 +40,8 @@ public:
     };
 
     struct InterfaceFluxInfo {
-        float accumulated_mass;
-        std::vector<float> local_flux;
+        double accumulated_mass;
+        std::vector<double> local_flux;
     };
 
     InterfaceFluxInfo getInterfaceFluxInfo() const {
@@ -53,13 +53,13 @@ public:
 
     ReactiveTransportSolver(
         int nx, int ny,
-        float dx, float dy,
-        float dt,
-        float total_time,
+        double dx, double dy,
+        double dt,
+        double total_time,
         int num_species, 
-        float Hs_co2,
-        float clay_porosity = 0.3f,    // Default clay porosity
-        float clay_tortuosity = 0.5f  // Default clay tortuosity
+        double Hs_co2,
+        double clay_porosity = 0.3f,    // Default clay porosity
+        double clay_tortuosity = 0.5f  // Default clay tortuosity
     ): nx_(nx), ny_(ny), dx_(dx), dy_(dy), dt_(dt), initial_dt_(dt),
         total_time_(total_time), num_species_(num_species),
         transport_solver_(nx, ny, dx, dy, dt, num_species),
@@ -75,7 +75,7 @@ public:
         cell_volumes_.resize(nx * ny);
         porosity_.resize(nx * ny);
 
-        const float P_co2 = 1.0f; // Partial pressure of CO2 in atmospheres
+        const double P_co2 = 1.0f; // Partial pressure of CO2 in atmospheres
         co2_saturation_conc_ = Hs_co2_ * P_co2;
 
         // Set default convergence parameters
@@ -124,9 +124,9 @@ public:
     const std::vector<int>& mask = transport_solver_.getMask();
  
     // Initialize with Gaussian pulses for species A and B
-    const float cx = nx_ / 2.0f;
-    const float cy = ny_ / 2.0f;
-    const float radius = nx_ / 10.0f;
+    const double cx = nx_ / 2.0f;
+    const double cy = ny_ / 2.0f;
+    const double radius = nx_ / 10.0f;
     
     for (int j = 0; j < ny_; j++) {
         for (int i = 0; i < nx_; i++) {
@@ -140,9 +140,9 @@ public:
             }
             
             // For valid cells, set initial concentrations
-            float dx = (i - cx);
-            float dy = (j - cy);
-            float r2 = (dx*dx + dy*dy)/(radius*radius);
+            double dx = (i - cx);
+            double dy = (j - cy);
+            double r2 = (dx*dx + dy*dy)/(radius*radius);
             
             // Species A: Central Gaussian
             concentrations_[(j * nx_ + i) * num_species_ + 0] = 
@@ -171,11 +171,11 @@ public:
     }
     
     void solve() {
-        float current_time = 0.0f;
+        double current_time = 0.0f;
         int step = 0;
         const int save_interval = 100;
-        const float MIN_DT = 5e-5f;  // minimum dt
-        const float MAX_DT = 5e-5f;  // minimum dt
+        const double MIN_DT = 1e-5f;  // minimum dt
+        const double MAX_DT = 1e-5f;  // minimum dt
         bool flag = true; // to test if there is any error reported in the simulation
         
         // Store initial mass for conservation checking
@@ -193,7 +193,7 @@ public:
             
             // Store pre-step state
             //std::cout << "Before transport_solver_.solve" << std::endl;
-            std::vector<float> pre_step_concentrations = concentrations_;
+            std::vector<double> pre_step_concentrations = concentrations_;
 
             //std::cout << "After transport_solver_.solve" << std::endl;
             
@@ -252,11 +252,11 @@ public:
         std::cout << "Simulation completed." << std::endl;
     }
     
-    void setVelocityField(float vx, float vy) {
+    void setVelocityField(double vx, double vy) {
         transport_solver_.setVelocity(vx, vy);
     }
     
-    void setUniformDiffusionCoefficients(float dx, float dy) {
+    void setUniformDiffusionCoefficients(double dx, double dy) {
         transport_solver_.setDiffusion(dx, dy);
     }
 
@@ -272,15 +272,15 @@ public:
         return transport_solver_;             
     }
 
-    void setModifiedDiffusion(const std::vector<float>& modified_diffusion) {
+    void setModifiedDiffusion(const std::vector<double>& modified_diffusion) {
         transport_solver_.setModifiedDiffusion(modified_diffusion);
     }
 
-    std::vector<float> getDiffusionCoefficients() const {
+    std::vector<double> getDiffusionCoefficients() const {
         return transport_solver_.getDiffusionCoefficients();
     }
 
-    void setCellVolumes(const std::vector<float>& cell_volumes) {
+    void setCellVolumes(const std::vector<double>& cell_volumes) {
         transport_solver_.setCellVolumes(cell_volumes);
     }
 
@@ -288,11 +288,11 @@ public:
     void setupDiffusionCoefficients(
         const std::vector<int>& clay_cells,
         const std::vector<int>& active_cells,
-        float water_diffusion = 2.0e-9,
-        float clay_porosity = 0.3,
-        float clay_tortuosity = 0.5) {
+        double water_diffusion = 2.0e-9,
+        double clay_porosity = 0.3,
+        double clay_tortuosity = 0.5) {
         
-        std::vector<float> modified_diffusion(nx_ * ny_);
+        std::vector<double> modified_diffusion(nx_ * ny_);
         
         for (int i = 0; i < nx_ * ny_; i++) {
             if (!active_cells[i]) {
@@ -323,52 +323,52 @@ public:
         }
     }
 
-    void setPorosity(const std::vector<float>& porosity) {
+    void setPorosity(const std::vector<double>& porosity) {
         transport_solver_.setPorosity(porosity);
     }
 
 private:
     // Grid parameters
     int nx_, ny_;
-    float dx_, dy_;
-    float dt_;
-    float initial_dt_;
-    float total_time_;
+    double dx_, dy_;
+    double dt_;
+    double initial_dt_;
+    double total_time_;
     int num_species_;
 
-    float Hs_co2_;  // Henry's coefficient for CO2
+    double Hs_co2_;  // Henry's coefficient for CO2
     std::vector<int> interface_cells_; // Store interface cells
-    float co2_saturation_conc_; // Saturation concentration of CO2 in water
+    double co2_saturation_conc_; // Saturation concentration of CO2 in water
 
     std::vector<int> clay_cells_;     // Store clay cell locations
-    float clay_porosity_;             // Porosity of clay cells
-    float clay_tortuosity_;           // Tortuosity factor for clay cells
+    double clay_porosity_;             // Porosity of clay cells
+    double clay_tortuosity_;           // Tortuosity factor for clay cells
 
-    float accumulated_interface_mass_; // Track total mass flux at interfaces
-    std::vector<float> interface_mass_flux_; // Track mass flux at each interface cell
+    double accumulated_interface_mass_; // Track total mass flux at interfaces
+    std::vector<double> interface_mass_flux_; // Track mass flux at each interface cell
 
-    std::vector<float> cell_volumes_;
-    std::vector<float> porosity_;
+    std::vector<double> cell_volumes_;
+    std::vector<double> porosity_;
 
     // Solvers and data
     TransportSolver2D transport_solver_;
     ReactionParameters reaction_params_;
-    std::vector<float> concentrations_;
-    std::vector<float> previous_concentrations_;
-    std::vector<float> previous_CO2_mass_;
+    std::vector<double> concentrations_;
+    std::vector<double> previous_concentrations_;
+    std::vector<double> previous_CO2_mass_;
     
     // Convergence handling
     ConvergenceParams conv_params_;
     ConvergenceStatus conv_status_;
-    float initial_total_mass_;
+    double initial_total_mass_;
     
     // Output handling
     std::unique_ptr<IOUtils::HDF5Writer> writer_;
 
-    bool checkConvergence(float current_time) {
+    bool checkConvergence(double current_time) {
         // Check mass conservation
-        float total_mass = calculateTotalMass();
-        float expected_mass = initial_total_mass_ + accumulated_interface_mass_;
+        double total_mass = calculateTotalMass();
+        double expected_mass = initial_total_mass_ + accumulated_interface_mass_;
         conv_status_.mass_error = std::abs(total_mass - expected_mass) / 
                                 (expected_mass + 1e-10);
         
@@ -380,12 +380,12 @@ private:
         }
         
         // Check solution change
-        float max_relative_change = 0.0f;
-        float max_absolute_change = 0.0f;
+        double max_relative_change = 0.0f;
+        double max_absolute_change = 0.0f;
         
         for (size_t i = 0; i < concentrations_.size(); ++i) {
-            float abs_change = std::abs(concentrations_[i] - previous_concentrations_[i]);
-            float rel_change = abs_change / 
+            double abs_change = std::abs(concentrations_[i] - previous_concentrations_[i]);
+            double rel_change = abs_change / 
                 (std::abs(previous_concentrations_[i]) + conv_params_.absolute_tol);
                 
             max_absolute_change = std::max(max_absolute_change, abs_change);
@@ -419,10 +419,10 @@ private:
         return true;
     }
     
-    float calculateTotalMass() const {
-        float total_mass = 0.0f;
+    double calculateTotalMass() const {
+        double total_mass = 0.0f;
         for (size_t i = 0; i < nx_ * ny_; ++i) {
-            float effective_volume = dx_ * dy_ * porosity_[i];
+            double effective_volume = dx_ * dy_ * porosity_[i];
             
             for (int s = 0; s < num_species_; s++) {
                 double conc = concentrations_[i * num_species_ + s];
@@ -434,8 +434,8 @@ private:
         return total_mass;
     }
 
-    float calculateInterfaceMassFlux() {
-        float total_flux = 0.0f;
+    double calculateInterfaceMassFlux() {
+        double total_flux = 0.0f;
         
         // Initialize or resize if needed
         if (interface_mass_flux_.size() != nx_ * ny_) {
@@ -446,9 +446,9 @@ private:
         for (int i = 0; i < nx_ * ny_; i++) {
             if (interface_cells_[i]) {
                 // Calculate the mass change due to enforcing constant concentration
-                float prev_mass = previous_concentrations_[i * num_species_] * dx_ * dy_;
-                float current_mass = co2_saturation_conc_ * dx_ * dy_;
-                float mass_flux = (current_mass - prev_mass) / dt_;
+                double prev_mass = previous_concentrations_[i * num_species_] * dx_ * dy_;
+                double current_mass = co2_saturation_conc_ * dx_ * dy_;
+                double mass_flux = (current_mass - prev_mass) / dt_;
                 
                 interface_mass_flux_[i] = mass_flux;
                 total_flux += mass_flux;
@@ -459,7 +459,7 @@ private:
     }
     
     bool checkSolutionBounds() const {
-        for (float c : concentrations_) {
+        for (double c : concentrations_) {
             if (std::isnan(c) || std::isinf(c) || c < -conv_params_.absolute_tol) {
                 return false;  // Return false if solution is out of bounds
             }
@@ -480,17 +480,17 @@ private:
         std::cout << std::endl;
     }
     
-    void printStats(float time) {
-        float total_A = 0.0f, total_B = 0.0f, total_C = 0.0f;
-        float max_A = 0.0f, max_B = 0.0f, max_C = 0.0f;
+    void printStats(double time) {
+        double total_A = 0.0f, total_B = 0.0f, total_C = 0.0f;
+        double max_A = 0.0f, max_B = 0.0f, max_C = 0.0f;
 
-        float total_interface_flux = 0.0f;
-        float max_interface_flux = 0.0f;
+        double total_interface_flux = 0.0f;
+        double max_interface_flux = 0.0f;
         
         for (int i = 0; i < nx_ * ny_; i++) {
-            float A = concentrations_[i * num_species_ + 0];
-            float B = concentrations_[i * num_species_ + 1];
-            float C = concentrations_[i * num_species_ + 2];
+            double A = concentrations_[i * num_species_ + 0];
+            double B = concentrations_[i * num_species_ + 1];
+            double C = concentrations_[i * num_species_ + 2];
             
             total_A += A;
             total_B += B;
@@ -501,7 +501,7 @@ private:
             max_C = std::max(max_C, C);
 
             if (interface_cells_[i]) {
-                float flux = interface_mass_flux_[i * num_species_];  // CO2 flux
+                double flux = interface_mass_flux_[i * num_species_];  // CO2 flux
                 total_interface_flux += flux;
                 max_interface_flux = std::max(max_interface_flux, std::abs(flux));
             }
@@ -524,20 +524,20 @@ private:
                 for (int s = 0; s < num_species_; s++) {
                     if (s == 0) {  // CO2
                         int idx = i * num_species_ + s;
-                        float old_concentration = concentrations_[idx];
+                        double old_concentration = concentrations_[idx];
                         
                         // Use porosity vector instead of clay_cells check
-                        float effective_volume = dx_ * dy_ * porosity_[i];
-                        float old_mass = old_concentration * effective_volume;
+                        double effective_volume = dx_ * dy_ * porosity_[i];
+                        double old_mass = old_concentration * effective_volume;
                         
                         // Set new concentration
                         concentrations_[idx] = co2_saturation_conc_;
                         
                         // Calculate new mass
-                        float new_mass = co2_saturation_conc_ * effective_volume;
+                        double new_mass = co2_saturation_conc_ * effective_volume;
                         
                         // Calculate mass flux
-                        float mass_flux = (new_mass - old_mass) / dt_;
+                        double mass_flux = (new_mass - old_mass) / dt_;
                         interface_mass_flux_[idx] = mass_flux;
                         
                         if (mass_flux > 0) {
@@ -550,10 +550,10 @@ private:
     }   
 
     void validateMassConservation() {
-    float total_mass = calculateTotalMass();
-    float expected_mass = initial_total_mass_ + accumulated_interface_mass_;
-    float absolute_error = std::abs(total_mass - expected_mass);
-    float relative_error = absolute_error / (expected_mass + 1e-10);
+    double total_mass = calculateTotalMass();
+    double expected_mass = initial_total_mass_ + accumulated_interface_mass_;
+    double absolute_error = std::abs(total_mass - expected_mass);
+    double relative_error = absolute_error / (expected_mass + 1e-10);
     
     std::cout << "\nMass Conservation Details:" << std::endl;
     std::cout << "Initial mass: " << initial_total_mass_ << std::endl;
@@ -564,8 +564,8 @@ private:
     std::cout << "Relative error: " << relative_error << std::endl;
     
     // Print interface flux details
-    float interface_water_flux = 0.0f;
-    float interface_clay_flux = 0.0f;
+    double interface_water_flux = 0.0f;
+    double interface_clay_flux = 0.0f;
     int water_interface_cells = 0;
     int clay_interface_cells = 0;
     
@@ -595,15 +595,15 @@ int main() {
     // Simulation parameters
     const int nx = 200;
     const int ny = 200;
-    const float dx = 0.01f;
-    const float dy = 0.01f;
-    const float dt = 0.00005f;
-    const float total_time = 1.0f; // time will be counted as hour in the simulation
+    const double dx = 0.01f;
+    const double dy = 0.01f;
+    const double dt = 0.00005f;
+    const double total_time = 1.0f; // time will be counted as hour in the simulation
     const int num_species = 3; 
 
-    const float Hs_co2 = 0.034f; // Henry's coefficient for CO2 in water mol/(L⋅atm) at 25°C 
-    const float clay_porosity = 0.3f; // Typical clay porosity
-    const float clay_tortuosity = 0.5f; // Typical clay tortuosity
+    const double Hs_co2 = 0.034f; // Henry's coefficient for CO2 in water mol/(L⋅atm) at 25°C 
+    const double clay_porosity = 0.3f; // Typical clay porosity
+    const double clay_tortuosity = 0.5f; // Typical clay tortuosity
 
     const std::string mask_file = "../Wallula_2810_pore1_final_slice73.raw";
 
@@ -617,10 +617,10 @@ int main() {
             clay_porosity, clay_tortuosity);
 
         std::vector<int> active_cells = mask_data.active_cells;
-        std::vector<float> modified_diffusion(nx * ny);
+        std::vector<double> modified_diffusion(nx * ny);
         std::vector<int> clay_cells = mask_data.clay_cells;
-        std::vector<float> cell_volumes(nx * ny);
-        std::vector<float> porosity(nx * ny);
+        std::vector<double> cell_volumes(nx * ny);
+        std::vector<double> porosity(nx * ny);
 
         for (int i = 0; i < nx * ny; ++i) {
             if (!active_cells[i]) {
